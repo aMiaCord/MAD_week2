@@ -6,8 +6,8 @@
     android:layout_height="match_parent"
     tools:context=".BoardActivity">
 
-    <WebView
+    <ListView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:id="@+id/boardView"/>
+        android:id="@+id/boardLayout"/>
 </android.support.constraint.ConstraintLayout>
