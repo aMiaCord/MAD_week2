@@ -1,8 +1,12 @@
 package com.example.q.a2ndweek;
 
-import android.support.design.widget.TabLayout;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
+
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.graphics.drawable.ShapeDrawable;
+import android.graphics.drawable.shapes.OvalShape;
+import android.os.Build;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 
@@ -11,32 +15,88 @@ import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.facebook.CallbackManager;
 import com.facebook.FacebookCallback;
 import com.facebook.FacebookException;
 import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
 
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.Socket;
+import java.util.ArrayList;
+import java.util.Arrays;
+
 public class Main2Activity extends AppCompatActivity {
 
-
-    CallbackManager callbackManager;
+    private ListView lv;
+    private String searchKeyword;
+    private ArrayList<Member> data;
+    private  ListviewAdapter adapter;
+    Socket socket;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main2);
 
+        lv = (ListView) findViewById(R.id.listview);
 
-        callbackManager = CallbackManager.Factory.create();
+        facebookLogIn();
+
+        myProfile();
+
+        try {
+            EditText searchBox = (EditText) findViewById(R.id.search_box);
+            searchBox.addTextChangedListener(new TextWatcher() {
+                public void afterTextChanged(Editable arg0) {
+                    // ignore
+                }
+                public void beforeTextChanged(CharSequence s, int start,
+                                              int count, int after) {
+                    // ignore
+                }
+                public void onTextChanged(CharSequence s, int start,
+                                          int before, int count) {
+                    try {
+                        searchKeyword = s.toString();
+                        displayList();
+                        } catch (Exception e) {
+                        Log.e("", e.getMessage(), e);
+                        }
+                }
+                });
+            displayList();
+            } catch (Exception e) {
+            Log.e("", e.getMessage(), e);
+            }
+
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+    }
+
+    public void facebookLogIn(){
+        CallbackManager callbackManager = CallbackManager.Factory.create();
 
         LoginButton loginButton = (LoginButton) findViewById(R.id.login_button);
         loginButton.setReadPermissions("email");
@@ -60,28 +120,174 @@ public class Main2Activity extends AppCompatActivity {
                 // App code
             }
         });
-
-
-
-
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-        // Create the adapter that will return a fragment for each of the three
-        // primary sections of the activity.
-
-        TabLayout tabLayout = (TabLayout) findViewById(R.id.tabs);
-
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
-
     }
 
+    public void myProfile(){
+        ImageView iv = (ImageView) findViewById(R.id.myimage);
+        iv.setBackground(new ShapeDrawable(new OvalShape()));
+        if (Build.VERSION.SDK_INT >= 21) {
+            iv.setClipToOutline(true);
+        }
+        Glide.with(getApplication())
+                .load(R.drawable.ic_launcher_foreground)
+                .into(iv);
+
+        TextView tvName = (TextView) findViewById(R.id.myname);
+        String id = getIntent().getStringExtra("id");
+        tvName.setText(id);
+
+        TextView tvStatus = (TextView) findViewById(R.id.mystatus);
+        String status = null;
+
+        ArrayList<Member> users = getList();
+        for(int i=0; i<users.size(); i++){
+            if(users.get(i).id.equals(id)) {
+                status = users.get(i).status;
+            }
+        }
+        tvStatus.setText(status);
+
+        LinearLayout profileDetail = (LinearLayout) findViewById(R.id.myprofile);
+        profileDetail.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                LayoutInflater inflater = getLayoutInflater();
+                View dialogView = inflater.inflate(R.layout.my_profile, null);
+                ImageView iv = dialogView.findViewById(R.id.myimage);
+                TextView tvName = dialogView.findViewById(R.id.myname);
+                TextView tvStatus = dialogView.findViewById(R.id.mystatus);
+
+                iv.setBackground(new ShapeDrawable(new OvalShape()));
+                if (Build.VERSION.SDK_INT >= 21) {
+                    iv.setClipToOutline(true);
+                }
+                Glide.with(getApplication())
+                        .load(R.drawable.ic_launcher_foreground)
+                        .into(iv);
+
+                String id = getIntent().getStringExtra("id");
+                tvName.setText(id);
+                String status = null;
+
+                ArrayList<Member> users = getList();
+                for(int i=0; i<users.size(); i++){
+                    if(users.get(i).id == id)
+                        status = users.get(i).status;
+                }
+                tvStatus.setText(status);
+
+                AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(Main2Activity.this);
+
+                // 제목셋팅
+                alertDialogBuilder.setTitle("내 프로필");
+                alertDialogBuilder.setView(dialogView);
+                alertDialogBuilder
+                        .setCancelable(false)
+                        .setPositiveButton("취소", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+                                dialogInterface.cancel();
+                            }
+                        })
+                        .setNegativeButton("수정", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+
+                            }
+                        });
+
+                alertDialogBuilder.show();
+            }
+        });
+    }
+
+    public class Member {
+        private String photoUri;
+        private String id;
+        private String status;
+
+        public String getPhotoUri(){return photoUri;}
+        public String getID(){return id;}
+        public String getStatus(){return status;}
+        public Member(String photoUri,String id, String status){
+            this.photoUri = photoUri;
+            this.id=id;
+            this.status=status;
+        }
+    }
+
+    private void displayList() throws Exception {
+
+        data = null;
+
+        data = getList();
+
+        adapter = new ListviewAdapter(getApplication(), R.layout.member, data);
+        lv.setAdapter(adapter);
+    }
+
+    private ArrayList<Member> getList(){
+        final ArrayList<Member> data = new ArrayList<>();
+        final ArrayList<Member> temp = new ArrayList<>();
+        final String photoUri =null;
+
+        final Thread getUsers = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    socket = new Socket("52.231.65.151", 8080);
+
+                    //send request
+                    DataOutputStream dOut = new DataOutputStream(socket.getOutputStream());
+
+                    dOut.writeBytes("GET /uu" + " HTTP/1.1\r\nHost: 127.0.0.1:8080\r\n\r\n");
+                    dOut.flush(); // Send off the data
+
+                    BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                    //read response
+                    String beforeline = in.readLine();
+                    String currentline = in.readLine();
+                    while(currentline != null){
+                        Log.d("read",beforeline);
+                        beforeline = currentline;
+                        currentline = in.readLine();
+                    }
+                    Log.d("read_final",beforeline);
+
+                    String[] allUsers = beforeline.split("/");
+                    for(int i=0;i<allUsers.length; i++){
+                        String[] oneUser = allUsers[i].split("!!");
+                        String id = oneUser[0];
+                        String status = oneUser[1];
+
+                        Member member = new Member(photoUri, id, status);
+                        temp.add(member);
+                    }
+                    socket.close();
+                }catch (IOException e){e.getStackTrace(); Log.d("login failed","at check thread");}}});
+        getUsers.start();
+        try {
+            getUsers.join();
+        }catch (InterruptedException e){e.printStackTrace();}
+
+        for(int i=0; i<temp.size();i++) {
+
+            boolean isAdd = false;
+            if (searchKeyword != null && "".equals(searchKeyword.trim()) == false) {
+                if (temp.get(i).id.contains(searchKeyword)) {
+                    isAdd = true;
+                }
+            } else {
+                isAdd = true;
+            }
+            if (isAdd) {
+                Member member = new Member(photoUri, temp.get(i).id, temp.get(i).status);
+                data.add(member);
+            }
+        }
+
+        return  data;
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
