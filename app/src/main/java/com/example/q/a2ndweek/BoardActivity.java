@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.support.constraint.ConstraintLayout;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -17,6 +18,9 @@ import android.widget.BaseAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
@@ -33,6 +37,14 @@ public class BoardActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_board);
         new loadBoard().execute();
+
+        FloatingActionButton fab = findViewById(R.id.addPost);
+        fab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(getApplicationContext(),AddPostActivity.class));
+            }
+        });
     }
     private class loadBoard extends AsyncTask<Void, Void, Void> {
         ArrayList<String[]> post_data_list;
@@ -55,17 +67,20 @@ public class BoardActivity extends AppCompatActivity {
                 BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                 //read response
                 post_data_list = new ArrayList<>();
-                String fromServer;
-                while(!in.readLine().equals("item start"));
-                while((fromServer = in.readLine()) != null){
-                    String[] post_data = new String[3];
-                    post_data[0]=fromServer;
-                    post_data[1]=in.readLine();
-                    post_data[2]=in.readLine();
+                String beforeline = in.readLine();
+                String currentline = in.readLine();
+                while(currentline != null){
+                    Log.d("read",beforeline);
+                    beforeline = currentline;
+                    currentline = in.readLine();
+                }
+                Log.d("read",beforeline);
+                String[] posts = beforeline.split("/");
+                for(String one_post : posts){
+                    Log.d("one_post=",one_post);
+                    String[] post_data = one_post.split("\t");
                     post_data_list.add(post_data);
                 }
-
-
                 socket.close();
             }catch (IOException e){e.printStackTrace();}
             return null;
@@ -105,7 +120,7 @@ public class BoardActivity extends AppCompatActivity {
         public View getView(int position, View convertView, ViewGroup parent) {
             ConstraintLayout postLayout = (ConstraintLayout)getLayoutInflater().inflate(R.layout.post_item,null);
             String[] post = post_data.get(position);
-
+            Log.d("post_at_adapter = ",post.toString());
             TextView title = (TextView)postLayout.getChildAt(0);
             title.setText(post[0]);
             TextView username = (TextView)postLayout.getChildAt(1);

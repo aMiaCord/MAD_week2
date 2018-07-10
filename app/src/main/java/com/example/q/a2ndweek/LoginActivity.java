@@ -51,7 +51,7 @@ public class LoginActivity extends AppCompatActivity {
                         fromServer = in.readLine();
                     }
                     socket.close();
-                    intent = new Intent(getApplicationContext(),Main2Activity.class);
+                    intent = new Intent(getApplicationContext(),BoardActivity.class);
                     intent.putExtra("id",id);
                 }catch (IOException e){e.getStackTrace(); Log.d("login failed","at check thread");}
             }

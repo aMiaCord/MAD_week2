@@ -1,5 +1,6 @@
 package com.example.q.a2ndweek;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
@@ -20,10 +21,12 @@ import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.GridView;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
@@ -34,7 +37,7 @@ import java.net.URL;
 import java.util.ArrayList;
 
 public class GalleryActivity extends AppCompatActivity {
-    ArrayList<String> img_path;
+    ArrayList<String> images;
     URL url;
     HttpURLConnection conn;
     @Override
@@ -61,42 +64,24 @@ public class GalleryActivity extends AppCompatActivity {
 
     GalleryAdapter galleryAdapter;
 
+
+
     public ArrayList<String> loadGallery() {
 
-        Uri uri;
-        Cursor cursor;
-        int column_index_data, column_index_folder_name;
 
-        String absolutePathOfImage = null;
-        uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
-
-        String[] projection = {MediaStore.MediaColumns.DATA, MediaStore.Images.Media.BUCKET_DISPLAY_NAME};
-        //set query
-        final String orderBy = MediaStore.Images.Media.DATE_TAKEN;
-        cursor = getApplicationContext().getContentResolver().query(uri, projection, null, null, orderBy + " DESC");
-
-        //set variable to get query data
-        column_index_data = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATA);
-        column_index_folder_name = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.BUCKET_DISPLAY_NAME);
-
-        //query(get image path)
-        ArrayList<String> imagePath = new ArrayList<>();
-        while (cursor.moveToNext()) {
-            absolutePathOfImage = cursor.getString(column_index_data);
-            imagePath.add(absolutePathOfImage);
-        }
-        cursor.close();
-        return imagePath;
+        return null;
     }
 
     public void setGalleryAdapter() {
         GridView gridView = findViewById(R.id.galleryView);
         ViewGroup root = findViewById(R.id.gallery_root_layout);
-        img_path = loadGallery();
+        images = loadGallery();
         //set adapter
-        galleryAdapter = new GalleryAdapter(getApplicationContext(), img_path);
+        galleryAdapter = new GalleryAdapter(getApplicationContext(), images);
         gridView.setAdapter(galleryAdapter);
 
+
+        /*
         gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
@@ -121,7 +106,8 @@ public class GalleryActivity extends AppCompatActivity {
 
 
             }
-        });
+
+        });*/
     }
     public String BitMapToString(Bitmap bitmap){
         ByteArrayOutputStream baos=new  ByteArrayOutputStream();
