@@ -60,8 +60,15 @@ public class ListviewAdapter extends BaseAdapter {
         TextView name=(TextView)convertView.findViewById(R.id.nameView);
         name.setText(listviewitem.getID());
 
-        /*TextView phone=(TextView)convertView.findViewById(R.id.phoneView);
-        phone.setText(listviewitem.getPhone());*/
+
+        TextView status = (TextView)convertView.findViewById(R.id.messageView);
+        if(!listviewitem.getStatus().equals("null")) {
+            status.setText(listviewitem.getStatus());
+        }
+        else{
+            status.setText("");
+        }
+
         return convertView;
     }
 }

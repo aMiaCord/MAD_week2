@@ -13,10 +13,11 @@
         android:layout_marginTop="5dp">
 
         <ImageView
-            android:id="@+id/myimage"
+            android:id="@+id/imageEdit"
             android:layout_width="50dp"
             android:layout_height="50dp"
-            android:layout_margin="10dp" />
+            android:layout_margin="10dp"
+            android:clickable="true"/>
 
         <TextView
             android:id="@+id/myname"
@@ -26,13 +27,14 @@
             android:gravity="center"
             android:textSize="18dp" />
 
-        <TextView
-            android:id="@+id/mystatus"
+        <EditText
+            android:id="@+id/statusEdit"
             android:layout_width="match_parent"
             android:layout_height="49dp"
             android:layout_margin="10dp"
             android:gravity="right"
-            android:textSize="18dp" />
+            android:textSize="18dp"
+            android:hint="상태메세지 입력"/>
 
     </LinearLayout>
 

@@ -6,13 +6,21 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.ShapeDrawable;
 import android.graphics.drawable.shapes.OvalShape;
-import android.media.ThumbnailUtils;
+import android.media.ExifInterface;
+import android.media.Image;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.provider.MediaStore;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.TabLayout;
@@ -50,6 +58,8 @@ import android.widget.Toast;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.Volley;
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.target.SimpleTarget;
+import com.bumptech.glide.request.transition.Transition;
 import com.facebook.CallbackManager;
 import com.facebook.FacebookCallback;
 import com.facebook.FacebookException;
@@ -66,12 +76,13 @@ import java.util.Arrays;
 
 public class Main2Activity extends AppCompatActivity {
 
-    public RequestQueue queue;
-    int REQ_CODE_UPLOAD=2;
+    private final int REQ_CODE_UPLOAD=2;
     private ListView lv;
     private String searchKeyword;
     private ArrayList<Member> data;
     private  ListviewAdapter adapter;
+    private final int CAMERA_CODE = 1111;
+    private final int GALLERY_CODE = 1112;
     Socket socket;
 
     @Override
@@ -83,15 +94,7 @@ public class Main2Activity extends AppCompatActivity {
 
         facebookLogIn();
 
-
-        images = new ArrayList<>();
-        _ids = new ArrayList<>();
-        //new loadGallery().execute();
-
-        queue = Volley.newRequestQueue(this);
-
-        queue.add(new GalleryActivity().loadGallery((ImageView) findViewById(R.id.testImage)));
-/*        myProfile();
+       myProfile();
 
         try {
             EditText searchBox = (EditText) findViewById(R.id.search_box);
@@ -117,22 +120,12 @@ public class Main2Activity extends AppCompatActivity {
             } catch (Exception e) {
             Log.e("", e.getMessage(), e);
             }
-*/
+
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         setTablayout();
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if(requestCode == REQ_CODE_UPLOAD) {
-            Log.d("REQ","OK");
-            if(resultCode== Activity.RESULT_OK) {
-                Log.d("RESULT","OK");
-                new loadBoard().execute();
-            }
-        }
-    }
     public void setTablayout(){
         TabLayout tabLayout = findViewById(R.id.tabs);
         findViewById(R.id.boardLayout).setVisibility(View.GONE);
@@ -211,7 +204,7 @@ public class Main2Activity extends AppCompatActivity {
         });
     }
 
-    public void myProfile(){
+    public void displayProfile(){
         ImageView iv = (ImageView) findViewById(R.id.myimage);
         iv.setBackground(new ShapeDrawable(new OvalShape()));
         if (Build.VERSION.SDK_INT >= 21) {
@@ -234,7 +227,48 @@ public class Main2Activity extends AppCompatActivity {
                 status = users.get(i).status;
             }
         }
-        tvStatus.setText(status);
+        if(status.equals("null")) {
+            tvStatus.setText("");
+        }
+        else{
+            tvStatus.setText(status);
+
+        }
+    }
+
+    public void displayEditProfile(){
+        LayoutInflater inflater = getLayoutInflater();
+        final View dialogView = inflater.inflate(R.layout.profile_edit, null);
+        ImageView imageView = dialogView.findViewById(R.id.imageEdit);
+        TextView nameView = dialogView.findViewById(R.id.myname);
+
+        imageView.setBackground(new ShapeDrawable(new OvalShape()));
+        if (Build.VERSION.SDK_INT >= 21) {
+            imageView.setClipToOutline(true);
+        }
+
+        final String id = getIntent().getStringExtra("id");
+        nameView.setText(id);
+
+        final EditText statusView = dialogView.findViewById(R.id.statusEdit);
+        String status = null;
+
+        ArrayList<Member> users = getList();
+        for(int k=0; k<users.size(); k++){
+            if(users.get(k).id.equals(id))
+                status = users.get(k).status;
+        }
+        if(status.equals("null")){
+            statusView.setText("");
+        }
+        else {
+            statusView.setText(status);
+        }
+    }
+    View editView;
+
+    public void myProfile(){
+        displayProfile();
 
         LinearLayout profileDetail = (LinearLayout) findViewById(R.id.myprofile);
         profileDetail.setOnClickListener(new View.OnClickListener() {
@@ -254,16 +288,21 @@ public class Main2Activity extends AppCompatActivity {
                         .load(R.drawable.ic_launcher_foreground)
                         .into(iv);
 
-                String id = getIntent().getStringExtra("id");
+                final String id = getIntent().getStringExtra("id");
                 tvName.setText(id);
                 String status = null;
 
                 ArrayList<Member> users = getList();
-                for(int i=0; i<users.size(); i++){
-                    if(users.get(i).id == id)
-                        status = users.get(i).status;
+                for(int k=0; k<users.size(); k++){
+                    if(users.get(k).id.equals(id))
+                        status = users.get(k).status;
                 }
-                tvStatus.setText(status);
+                if(status.equals("null")){
+                    tvStatus.setText("");
+                }
+                else {
+                    tvStatus.setText(status);
+                }
 
                 AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(Main2Activity.this);
 
@@ -281,10 +320,118 @@ public class Main2Activity extends AppCompatActivity {
                         .setNegativeButton("수정", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialogInterface, int i) {
+                                LayoutInflater inflater = getLayoutInflater();
+                                editView = inflater.inflate(R.layout.profile_edit, null);
+                                ImageView imageView = editView.findViewById(R.id.imageEdit);
+                                TextView nameView = editView.findViewById(R.id.myname);
 
+                                imageView.setOnClickListener(new View.OnClickListener() {
+                                    @Override
+                                    public void onClick(View view) {
+                                        final String[] items = {"앨범에서 사진 선택", "카메라로 사진 촬영", "기본 이미지로 변경", "취소"};
+                                        final AlertDialog.Builder builder = new AlertDialog.Builder(Main2Activity.this);
+                                        builder.setTitle("프로필 사진 수정");
+                                        builder.setSingleChoiceItems(items, 0, new DialogInterface.OnClickListener() {
+                                            @Override
+                                            public void onClick(DialogInterface dialogInterface, int which) {
+                                                switch(which){
+                                                    case 0:
+                                                        //앨범에서 사진 선택
+                                                        selectGallery();
+                                                        dialogInterface.dismiss();
+                                                        break;
+                                                    case 1:
+                                                        //카메라로 사진 촬영
+                                                        break;
+                                                    case 2:
+                                                        //기본 이미지로 변경
+                                                        break;
+                                                    case 3:
+                                                        //취소
+                                                        dialogInterface.cancel();
+                                                        break;
+
+                                                        default:
+                                                            dialogInterface.dismiss();
+                                                            break;
+                                                }
+                                            }
+                                        });
+                                        builder.show();
+                                    }
+                                });
+
+                                imageView.setBackground(new ShapeDrawable(new OvalShape()));
+                                if (Build.VERSION.SDK_INT >= 21) {
+                                    imageView.setClipToOutline(true);
+                                }
+                                Glide.with(getApplication())
+                                        .load(R.drawable.ic_launcher_foreground)
+                                        .into(imageView);
+
+                                final String id = getIntent().getStringExtra("id");
+                                nameView.setText(id);
+
+                                final EditText statusView = editView.findViewById(R.id.statusEdit);
+                                String status = null;
+
+                                ArrayList<Member> users = getList();
+                                for(int k=0; k<users.size(); k++){
+                                    if(users.get(k).id.equals(id))
+                                        status = users.get(k).status;
+                                }
+                                if(status.equals("null")){
+                                    statusView.setText("");
+                                }
+                                else {
+                                    statusView.setText(status);
+                                }
+                                AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(Main2Activity.this);
+                                alertDialogBuilder.setTitle("정보 수정");
+                                alertDialogBuilder.setView(editView);
+
+                                alertDialogBuilder
+                                        .setCancelable(false)
+                                        .setPositiveButton("저장", new DialogInterface.OnClickListener() {
+                                            @Override
+                                            public void onClick(DialogInterface dialogInterface, int i) {
+
+                                                new Thread() {
+                                                    public void run() {
+                                                        try {
+                                                            String status = statusView.getText().toString();
+                                                            TextView tvStatus = (TextView) findViewById(R.id.mystatus);
+                                                            if (status.equals("")) {
+                                                                tvStatus.setText(status);
+                                                                status = "null";
+                                                            }
+
+                                                            socket = new Socket("52.231.65.151", 8080);
+                                                            DataOutputStream dOut = new DataOutputStream(socket.getOutputStream());
+                                                            final String id = getIntent().getStringExtra("id");
+                                                            dOut.writeBytes("GET /update-profile?id=" + id + "&status=" + status + " HTTP/1.1\r\nHost: 127.0.0.1:8080/\r\n\r\n");
+                                                            dOut.flush(); // Send off the data
+                                                        } catch (IOException e)
+                                                        {
+                                                            e.printStackTrace();
+                                                        }
+                                                    }
+                                                }.start();
+
+                                                Toast.makeText(Main2Activity.this, "성공적으로 수정되었습니다.", Toast.LENGTH_SHORT).show();
+                                                displayProfile();
+                                                displayList();
+                                            }
+                                        })
+                                        .setNegativeButton("취소", new DialogInterface.OnClickListener() {
+                                            @Override
+                                            public void onClick(DialogInterface dialogInterface, int i) {
+                                                dialogInterface.cancel();
+                                            }
+                                        });
+                                alertDialogBuilder.show();
                             }
                         });
-
                 alertDialogBuilder.show();
             }
         });
@@ -305,7 +452,97 @@ public class Main2Activity extends AppCompatActivity {
         }
     }
 
-    private void displayList() throws Exception {
+    private void selectGallery(){
+        Intent intent = new Intent(Intent.ACTION_PICK);
+        intent.setData(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        intent.setType("image/*");
+        startActivityForResult(intent, GALLERY_CODE);
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == RESULT_OK) {
+            switch (requestCode) {
+
+                case GALLERY_CODE:
+                    sendPicture(data.getData()); //갤러리에서 가져오기
+                    //System.out.println("파일 이름은 : "+mImageCaptureName);
+                    break;
+                case CAMERA_CODE:
+                    //getPictureForPhoto(); //카메라에서 가져오기
+                    //System.out.println("파일 이름은 : "+mImageCaptureName);
+                    break;
+
+                case REQ_CODE_UPLOAD:
+                    Log.d("REQ","OK");
+                    if(resultCode== Activity.RESULT_OK) {
+                        Log.d("RESULT","OK");
+                        new loadBoard().execute();
+                    }
+                    break;
+
+                default:
+                    System.out.println("불가능한 접근\n");
+                    break;
+            }
+
+        }
+    }
+
+    private void sendPicture(Uri imgUri) {
+        ImageView imageView = editView.findViewById(R.id.imageEdit);
+
+        String imagePath = getRealPathFromURI(imgUri); // path 경로
+        ExifInterface exif = null;
+        try {
+            exif = new ExifInterface(imagePath);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        int exifOrientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+        int exifDegree = exifOrientationToDegrees(exifOrientation);
+
+        Bitmap bitmap = BitmapFactory.decodeFile(imagePath);//경로를 통해 비트맵으로 전환
+        imageView.setImageBitmap(rotate(bitmap, exifDegree));//이미지 뷰에 비트맵 넣기
+        Log.d("이미지 패스", imagePath);
+    }
+
+    private int exifOrientationToDegrees(int exifOrientation) {
+        if (exifOrientation == ExifInterface.ORIENTATION_ROTATE_90) {
+            return 90;
+        } else if (exifOrientation == ExifInterface.ORIENTATION_ROTATE_180) {
+            return 180;
+        } else if (exifOrientation == ExifInterface.ORIENTATION_ROTATE_270) {
+            return 270;
+        }
+        return 0;
+    }
+
+    private Bitmap rotate(Bitmap src, float degree) {
+        // Matrix 객체 생성
+        Matrix matrix = new Matrix();
+        // 회전 각도 셋팅
+        matrix.postRotate(degree);
+        // 이미지와 Matrix 를 셋팅해서 Bitmap 객체 생성
+        return Bitmap.createBitmap(src, 0, 0, src.getWidth(),
+                src.getHeight(), matrix, true);
+    }
+
+    private String getRealPathFromURI(Uri contentUri) {
+        int column_index=0;
+        String[] proj = {MediaStore.Images.Media.DATA};
+        Cursor cursor = getContentResolver().query(contentUri, proj, null, null, null);
+        if(cursor.moveToFirst()){
+            column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+        }
+
+        return cursor.getString(column_index);
+    }
+
+
+
+    private void displayList(){
 
         data = null;
 
@@ -463,10 +700,6 @@ public class Main2Activity extends AppCompatActivity {
 
 
 
-
-    GalleryAdapter galleryAdapter;
-    ArrayList<Bitmap> images;
-    ArrayList<String> _ids;
 
     public class loadBoard extends AsyncTask<Void, Void, Void> {
         ArrayList<String[]> post_data_list;
