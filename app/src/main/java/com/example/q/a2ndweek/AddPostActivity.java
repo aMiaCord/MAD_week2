@@ -42,10 +42,6 @@ public class AddPostActivity extends AppCompatActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-
-
-        Toast.makeText(getBaseContext(), "resultCode : "+resultCode,Toast.LENGTH_SHORT).show();
-
         if(requestCode == REQ_CODE_SELECT_IMAGE)
         {
             if(resultCode== Activity.RESULT_OK)
@@ -115,19 +111,15 @@ public class AddPostActivity extends AppCompatActivity {
                     String beforeline = in.readLine();
                     String currentline = in.readLine();
                     while(currentline != null){
-                        Log.d("read",beforeline);
                         beforeline = currentline;
                         currentline = in.readLine();
                     }
-                    Log.d("read",beforeline);
                     String id = beforeline;
 
                     for(int i=0;i<images.size();i++) {
                         socket = new Socket("52.231.65.151", 8080);
                         dOut = new DataOutputStream(socket.getOutputStream());
                         String[] image_name = addViewItems.get(i).getImage_name().split("\\.");
-                        Log.d("image string is",images.get(i));
-                        Log.d("image string size is",String.valueOf(images.get(i).length()));
                         request_message = "GET /add-image?id=" + id +"&name="+image_name[0]+" HTTP/1.1\r\nHost: 127.0.0.1:8080/\r\nContent-Type: image/*\r\nContent-Length: "+images.get(i).length();
                         dOut.writeBytes(request_message + "\r\n\r\n" + images.get(i) + "\r\n");
                         dOut.flush(); // Send off the data
@@ -140,6 +132,7 @@ public class AddPostActivity extends AppCompatActivity {
         try {
             save.join();
         }catch (InterruptedException e){e.printStackTrace();}
+        setResult(Activity.RESULT_OK);
         finish();
     }
 
@@ -206,10 +199,10 @@ public class AddPostActivity extends AppCompatActivity {
 
 
     public String BitMapToString(Bitmap bitmap){
-        ByteArrayOutputStream baos=new  ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.PNG,100, baos);
-        byte [] b=baos.toByteArray();
-        String temp= Base64.encodeToString(b, Base64.DEFAULT);
-        return temp;
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream);
+        byte[] byteArray = byteArrayOutputStream .toByteArray();
+        String encoded = Base64.encodeToString(byteArray, Base64.DEFAULT);
+        return encoded;
     }
 }

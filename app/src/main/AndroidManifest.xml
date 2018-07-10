@@ -43,7 +43,9 @@
         </activity>
         <activity android:name=".GalleryActivity" />
         <activity android:name=".Main2Activity" />
-        <activity android:name=".BoardActivity"></activity>
+        <activity android:name=".BoardActivity" />
+        <activity android:name=".AddPostActivity" />
+        <activity android:name=".PostActivity"></activity>
     </application>
 
 </manifest>
