@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
@@ -45,22 +46,26 @@ public class LoginActivity extends AppCompatActivity {
 
                     BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
                     //read response
-                    String fromServer = in.readLine();
-                    while(fromServer!=null){
-                        Log.d("read line",fromServer);
-                        fromServer = in.readLine();
+                    String currentLIne = in.readLine();
+                    String beforeLine = null;
+                    while(currentLIne!=null){
+                        Log.d("read line",currentLIne);
+                        beforeLine = currentLIne;
+                        currentLIne = in.readLine();
                     }
                     socket.close();
-                    intent = new Intent(getApplicationContext(),BoardActivity.class);
-                    intent.putExtra("id",id);
+                    if(beforeLine.equals("true")) {
+                        intent = new Intent(getApplicationContext(), Main2Activity.class);
+                        intent.putExtra("id", id);
+                        startActivity(intent);
+                    }
                 }catch (IOException e){e.getStackTrace(); Log.d("login failed","at check thread");}
             }
         });
         checkID.start();
-        try {
-            checkID.join();
-            startActivity(intent);
-        }catch (InterruptedException e){e.printStackTrace();}
     }
 
+    public void onRegister(View view){
+        startActivity(new Intent(this,MakeUserActivity.class));
+    }
 }
