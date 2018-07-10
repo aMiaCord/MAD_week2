@@ -73,6 +73,13 @@
         android:layout_height="match_parent"
         android:id="@+id/frameLayout">
 
+        <GridView
+            android:id="@+id/galleryView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:numColumns="4"
+            tools:context=".GalleryActivity" />
+
         <ListView
             android:id="@+id/boardLayout"
             android:layout_width="match_parent"
