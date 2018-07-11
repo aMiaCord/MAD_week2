@@ -57,8 +57,6 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.android.volley.AuthFailureError;
-import com.android.volley.NetworkResponse;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
@@ -120,12 +118,8 @@ public class Main2Activity extends AppCompatActivity {
 
         images = new ArrayList<>();
         _ids = new ArrayList<>();
-        //new loadGallery().execute();
 
         queue = Volley.newRequestQueue(this);
-
-      //  queue.add(new GalleryActivity().uploadBitmap(null,(ImageView) findViewById(R.id.testImage)));
-        myProfile();
         myProfile();
 
         try {
@@ -152,6 +146,14 @@ public class Main2Activity extends AppCompatActivity {
             } catch (Exception e) {
             Log.e("", e.getMessage(), e);
             }
+        GalleryActivity galleryActivity = new GalleryActivity();
+
+        queue.add(galleryActivity.downloadBitmap(0));
+        images.addAll(galleryActivity.images);
+        GridView gridView = findViewById(R.id.galleryView);
+        galleryAdapter = new GalleryAdapter(getApplicationContext(), images,_ids);
+        gridView.setAdapter(galleryAdapter);
+
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -171,7 +173,7 @@ public class Main2Activity extends AppCompatActivity {
                         findViewById(R.id.tab1).setVisibility(View.VISIBLE);
                         break;
                     case 1:
-                        new loadBoard().execute();
+                        loadBoard();
                         findViewById(R.id.boardLayout).setVisibility(View.VISIBLE);
                         FloatingActionButton fab = findViewById(R.id.fab);
                         fab.setOnClickListener(new View.OnClickListener() {
@@ -685,7 +687,7 @@ public class Main2Activity extends AppCompatActivity {
                     Log.d("REQ","OK");
                     if(resultCode== Activity.RESULT_OK) {
                         Log.d("RESULT","OK");
-                        new loadBoard().execute();
+                        loadBoard();
                     }
                     break;
 
@@ -880,98 +882,49 @@ public class Main2Activity extends AppCompatActivity {
         }
     }
 
-    /**
-     * A {@link FragmentPagerAdapter} that returns a fragment corresponding to
-     * one of the sections/tabs/pages.
-     */
-    public class SectionsPagerAdapter extends FragmentPagerAdapter {
 
-        public SectionsPagerAdapter(FragmentManager fm) {
-            super(fm);
-        }
+    GalleryAdapter galleryAdapter;
+    ArrayList<Bitmap> images;
+    ArrayList<String> _ids;
 
-        @Override
-        public Fragment getItem(int position) {
-            // getItem is called to instantiate the fragment for the given page.
-            // Return a PlaceholderFragment (defined as a static inner class below).
-            return PlaceholderFragment.newInstance(position + 1);
-        }
-
-        @Override
-        public int getCount() {
-            // Show 3 total pages.
-            return 3;
-        }
-    }
-
-
-
-
-
-
-    public class loadBoard extends AsyncTask<Void, Void, Void> {
-        ArrayList<String[]> post_data_list;
-        @Override
-        protected void onPreExecute(){
-            super.onPreExecute();
-        }
-        @Override
-        protected Void doInBackground(Void... a) {
-            //make socket
-            try {
-                Socket socket = new Socket("52.231.65.151", 8080);
-
-                //send request
-                DataOutputStream dOut = new DataOutputStream(socket.getOutputStream());
-
-                dOut.writeBytes("GET /board" + " HTTP/1.1\r\nHost: 127.0.0.1:8080/" + "\r\n\r\n");
-                dOut.flush(); // Send off the data
-
-                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                //read response
-                post_data_list = new ArrayList<>();
-                String currentline = in.readLine();
-                while(currentline!=null){
-                    if(currentline.equals("**data seperate**"))
-                        break;
-                    currentline = in.readLine();
-                }
-                if(currentline!=null) {
-                    if (currentline.equals("**data seperate**")) {
-                        currentline = in.readLine();
-                        if(currentline!=null) {
-                            String[] posts = currentline.split("/");
-                            for (String one_post : posts) {
-                                String[] post_data = one_post.split("\t");
-                                post_data_list.add(post_data);
-                                Log.d("one_post", one_post);
-                            }
+    public void loadBoard(){
+        final ArrayList<String[]> post_data_list;
+        post_data_list = new ArrayList<>();
+        StringRequest myReq = new StringRequest(Request.Method.GET,
+                "http://52.231.65.151:8080/board",
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        String[] item_list = response.split("/");
+                        for(String item : item_list){
+                            String[] item_info = item.split("\t");
+                            if(!item_info[0].equals(""))
+                                post_data_list.add(item_info);
+                        }
+                        if(!post_data_list.isEmpty()) {
+                            ListView boardLayout = findViewById(R.id.boardLayout);
+                            BoardAdapter boardAdapter = new BoardAdapter(getApplicationContext(), post_data_list);
+                            boardLayout.setAdapter(boardAdapter);
+                            boardLayout.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                                @Override
+                                public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                                    String post_id = (String) view.getTag();
+                                    Intent intent = new Intent(getApplicationContext(), PostActivity.class);
+                                    intent.putExtra("_id", post_id);
+                                    startActivity(intent);
+                                }
+                            });
                         }
                     }
-                }
-                socket.close();
-            }catch (IOException e){e.printStackTrace();}
-            return null;
-        }
-        @Override
-        protected void onPostExecute(Void size){
-            super.onPostExecute(size);
-            if(!post_data_list.isEmpty()) {
-                ListView boardLayout = findViewById(R.id.boardLayout);
-                BoardAdapter boardAdapter = new BoardAdapter(getApplicationContext(), post_data_list);
-                boardLayout.setAdapter(boardAdapter);
-
-                boardLayout.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                },
+                new Response.ErrorListener() {
                     @Override
-                    public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                        String post_id = (String) view.getTag();
-                        Intent intent = new Intent(getApplicationContext(), PostActivity.class);
-                        intent.putExtra("_id", post_id);
-                        startActivity(intent);
+                    public void onErrorResponse(VolleyError error) {
+                        //  Log.d("ErrorLog", error.getMessage());
                     }
                 });
-            }
-        }
+
+        queue.add(myReq);
     }
     public class BoardAdapter extends BaseAdapter {
         ArrayList<String[]> post_data;
@@ -1011,58 +964,7 @@ public class Main2Activity extends AppCompatActivity {
         }
     }
 
-    public class loadGallery extends AsyncTask<Void, Void, Void> {
-        ArrayList<String[]> post_data_list;
-        @Override
-        protected void onPreExecute(){
-            super.onPreExecute();
-        }
-        @Override
-        protected Void doInBackground(Void... a) {
-            try {
-                //make socket
-                socket = new Socket("52.231.65.151", 8080);
 
-                //send request
-                DataOutputStream dOut = new DataOutputStream(socket.getOutputStream());
-
-                dOut.writeBytes("GET /images" + " HTTP/1.1\r\nHost: 127.0.0.1:8080/\r\n\r\n");
-                dOut.flush(); // Send off the data
-                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                String currentline;
-                while((currentline = in.readLine())!=null){
-                    if(currentline.equals("**image seperate**"))
-                        break;
-                }
-                if(currentline!=null){
-                    while((currentline=in.readLine())!=null){
-                        Log.d("readline",currentline);
-                        _ids.add(currentline);
-                        images.add(Base64ToBitmap(in.readLine()));
-                        Log.d("added image",_ids.get(_ids.size()-1));
-                    }
-                }
-            }catch (Exception e){e.printStackTrace();}
-            return null;
-        }
-        @Override
-        protected void onPostExecute(Void size){
-            super.onPostExecute(size);
-            GridView gridView = findViewById(R.id.galleryView);
-            galleryAdapter = new GalleryAdapter(getApplicationContext(), images,_ids);
-            gridView.setAdapter(galleryAdapter);
-
-            gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                    String _id = (String)view.getTag();
-                    Intent intent = new Intent(getApplicationContext(),PostActivity.class);
-                    intent.putExtra("_id",_id);
-                    startActivity(intent);
-                }
-            });
-        }
-    }
     public class GalleryAdapter extends BaseAdapter {
         private Context context;
         private ArrayList<Bitmap> image64base;
@@ -1091,27 +993,10 @@ public class Main2Activity extends AppCompatActivity {
             getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
             int widthPixels = displayMetrics.widthPixels;
             final ImageView imageView = new ImageView(getApplicationContext());
+            Log.d("get view start","start");
             //imageView.setImageBitmap(image);
             imageView.setTag((String) getItem(position));
             imageView.setLayoutParams(new GridView.LayoutParams(GridView.AUTO_FIT, widthPixels / 4));
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    //read image from image path string
-                    BitmapFactory.Options options = new BitmapFactory.Options();
-                    options.inSampleSize = 8;
-                    Bitmap image = image64base.get(position);
-                    final Bitmap image2 = ThumbnailUtils.extractThumbnail(image, 128, 128);
-                    final String imageTag = _ids.get(position);
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            imageView.setImageBitmap(image2);
-                            imageView.setTag(imageTag);
-                        }
-                    });
-                }
-            }).start();
             return imageView;
         }
 

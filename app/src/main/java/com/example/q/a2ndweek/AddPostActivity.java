@@ -62,11 +62,14 @@ public class AddPostActivity extends AppCompatActivity {
     int REQ_CODE_SELECT_IMAGE = 3;
     ArrayList<AddViewItem> addViewItems = new ArrayList<>();
     private ConstraintLayout mCLayout;
+    ArrayList<String> id;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_post);
         mCLayout = findViewById(R.id.cLayout);
+        id = new ArrayList<>();
+        queue = Volley.newRequestQueue(this);
     }
 
 
@@ -118,59 +121,61 @@ public class AddPostActivity extends AppCompatActivity {
         //get text
         EditText titleView = findViewById(R.id.editTitle);
         EditText contentView = findViewById(R.id.editContent);
-        String title = titleView.getText().toString();
-        String content = contentView.getText().toString();
-        try {
-            JSONObject jsonBody = new JSONObject();
-            jsonBody.put("content", content);
-            final String requestBody = jsonBody.toString();
+        final String title = titleView.getText().toString();
+        final String content = contentView.getText().toString();
 
-            queue = Volley.newRequestQueue(this);
 
-            StringRequest myReq = new StringRequest(Request.Method.POST,
-                    "http://52.231.65.151:8080/add-post?title=" + title,
-                    new Response.Listener<String>() {
-                        @Override
-                        public void onResponse(String response) {
-                            Log.d("HiLog", response);
-                        }
-                    },
-                    new Response.ErrorListener() {
-                        @Override
-                        public void onErrorResponse(VolleyError error) {
-                            Log.d("ErrorLog", error.getMessage());
-                        }
-                    }) {
-                @Override
-                public String getBodyContentType() {
-                    return "application/json; charset=utf-8";
-                }
 
-                @Override
-                public byte[] getBody() throws AuthFailureError {
-                    try {
-                        return requestBody == null ? null : requestBody.getBytes("utf-8");
-                    } catch (UnsupportedEncodingException uee) {
-                        VolleyLog.wtf("Unsupported Encoding while trying to get the bytes of %s using %s", requestBody, "utf-8");
-                        return null;
+        AndroidMultiPartEntity volleyMultipartRequest = new AndroidMultiPartEntity(Request.Method.POST, EndPoints.ROOT_URL,
+                new Response.Listener<NetworkResponse>() {
+                    @Override
+                    public void onResponse(NetworkResponse response) {
+                        Log.d("return value",response.toString());
                     }
-                }
-
-                @Override
-                protected Response<String> parseNetworkResponse(NetworkResponse response) {
-                    String responseString = "";
-                    if (response != null) {
-                        responseString = String.valueOf(response.statusCode);
-                        // can get more details such as response.headers
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.d("return value error", error.getMessage());
+                        Toast.makeText(getApplicationContext(), error.getMessage(), Toast.LENGTH_SHORT).show();
                     }
-                    return Response.success(responseString, HttpHeaderParser.parseCacheHeaders(response));
-                }
-            };
+                }) {
 
-            queue.add(myReq);
-        }catch (JSONException e){e.printStackTrace();}
-        for(AddViewItem item :addViewItems)
-            uploadBitmap(item.getImage());
+            /*
+             * If you want to add more parameters with the image
+             * you can do it here
+             * here we have only one parameter with the image
+             * which is tags
+             * */
+            @Override
+            protected Map<String, String> getParams() throws AuthFailureError {
+                Map<String, String> params = new HashMap<>();
+                params.put("title", title);
+                params.put("content",content);
+                params.put("size",String.valueOf(addViewItems.size()));
+                return params;
+            }
+            /*
+             * Here we are passing image by renaming it with a unique name
+             * */
+            @Override
+            protected Map<String, AndroidMultiPartEntity.DataPart> getByteData() {
+                Map<String, AndroidMultiPartEntity.DataPart> params = new HashMap<>();
+                long imagename = System.currentTimeMillis();
+                for(int i=0;i<addViewItems.size();i++) {
+                    params.put("image" + i, new AndroidMultiPartEntity.DataPart(imagename + ".png", getFileDataFromDrawable(addViewItems.get(i).getImage())));
+                    Log.d("image count",String.valueOf(i));
+                }
+                return params;
+            }
+        };
+
+        //adding the request to volley
+        queue.add(volleyMultipartRequest);
+
+
+
+
         setResult(Activity.RESULT_OK);
         finish();
     }
@@ -266,6 +271,7 @@ public class AddPostActivity extends AppCompatActivity {
             protected Map<String, String> getParams() throws AuthFailureError {
                 Map<String, String> params = new HashMap<>();
                 params.put("tags", tags);
+                params.put("images", tags);
                 return params;
             }
 
@@ -276,7 +282,8 @@ public class AddPostActivity extends AppCompatActivity {
             protected Map<String, AndroidMultiPartEntity.DataPart> getByteData() {
                 Map<String, AndroidMultiPartEntity.DataPart> params = new HashMap<>();
                 long imagename = System.currentTimeMillis();
-                params.put("image", new AndroidMultiPartEntity.DataPart(imagename + ".png", getFileDataFromDrawable(bitmap)));
+                for(int i=0;i<addViewItems.size();i++)
+                    params.put("image"+i, new AndroidMultiPartEntity.DataPart(imagename + ".png", getFileDataFromDrawable(addViewItems.get(i).getImage())));
                 return params;
             }
         };
@@ -288,18 +295,5 @@ public class AddPostActivity extends AppCompatActivity {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.PNG, 80, byteArrayOutputStream);
         return byteArrayOutputStream.toByteArray();
-    }
-    public String BitMapToString(Bitmap bitmap){
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream);
-        byte[] byteArray = byteArrayOutputStream .toByteArray();
-        String encoded = Base64.encodeToString(byteArray, Base64.DEFAULT);
-        return encoded;
-    }
-    public byte[] Bitmap2Byte(Bitmap bitmap){
-        int size = bitmap.getRowBytes() * bitmap.getHeight();
-        ByteBuffer byteBuffer = ByteBuffer.allocate(size);
-        bitmap.copyPixelsToBuffer(byteBuffer);
-        return byteBuffer.array();
     }
 }

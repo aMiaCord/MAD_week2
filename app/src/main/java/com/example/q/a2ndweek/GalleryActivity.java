@@ -52,21 +52,21 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class GalleryActivity {
-
-    URL url;
-    HttpURLConnection conn;
-    public void uploadBitmap(final Bitmap bitmap,final ImageView imageVIew) {
-
+    public ArrayList<Bitmap> images;
+    GalleryActivity(){
+        images = new ArrayList<>();
+    }
+    public AndroidMultiPartEntity downloadBitmap(int index) {
         //getting the tag from the edittext
         final String tags = "x";
 
         //our custom volley request
-        AndroidMultiPartEntity volleyMultipartRequest = new AndroidMultiPartEntity(Request.Method.POST, EndPoints.GET_PICS_URL,
+        AndroidMultiPartEntity volleyMultipartRequest = new AndroidMultiPartEntity(Request.Method.POST, EndPoints.GET_PICS_URL+"?index="+index,
                 new Response.Listener<NetworkResponse>() {
                     @Override
                     public void onResponse(NetworkResponse response) {
                         Log.d("return value",response.toString());
-                        imageVIew.setImageBitmap(BitmapFactory.decodeByteArray(response.data, 0, response.data.length));
+                        images.add(BitmapFactory.decodeByteArray(response.data, 0, response.data.length));
                     }
                 },
                 new Response.ErrorListener() {
@@ -97,13 +97,8 @@ public class GalleryActivity {
                 return params;
             }
         };
-
         //adding the request to volley
+        return volleyMultipartRequest;
     }
-
-
-    Socket socket;
-
-
 
 }
