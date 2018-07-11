@@ -18,12 +18,14 @@ import android.media.Image;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.TabLayout;
+import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 
@@ -55,7 +57,13 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.AuthFailureError;
+import com.android.volley.NetworkResponse;
+import com.android.volley.Request;
 import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.target.SimpleTarget;
@@ -67,17 +75,24 @@ import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.reflect.Member;
 import java.net.Socket;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Main2Activity extends AppCompatActivity {
 
     public RequestQueue queue;
+    public static Context mContext;
     private final int REQ_CODE_UPLOAD=2;
     private ListView lv;
     private String searchKeyword;
@@ -85,12 +100,18 @@ public class Main2Activity extends AppCompatActivity {
     private  ListviewAdapter adapter;
     private final int CAMERA_CODE = 1111;
     private final int GALLERY_CODE = 1112;
+    private Uri photoUri;
+    private String currentPhotoPath;//실제 사진 파일 경로
+    String mImageCaptureName;//이미지 이름
     Socket socket;
+    Bitmap profilePic;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main2);
+
+        mContext = this;
 
         lv = (ListView) findViewById(R.id.listview);
 
@@ -216,17 +237,16 @@ public class Main2Activity extends AppCompatActivity {
     }
 
     public void displayProfile(){
-        ImageView iv = (ImageView) findViewById(R.id.myimage);
+        final String id = getIntent().getStringExtra("id");
+        final ImageView iv = (ImageView) findViewById(R.id.myimage);
         iv.setBackground(new ShapeDrawable(new OvalShape()));
         if (Build.VERSION.SDK_INT >= 21) {
             iv.setClipToOutline(true);
         }
-        Glide.with(getApplication())
-                .load(R.drawable.ic_launcher_foreground)
-                .into(iv);
+
+        isThereImage(id, iv);
 
         TextView tvName = (TextView) findViewById(R.id.myname);
-        String id = getIntent().getStringExtra("id");
         tvName.setText(id);
 
         TextView tvStatus = (TextView) findViewById(R.id.mystatus);
@@ -247,44 +267,42 @@ public class Main2Activity extends AppCompatActivity {
         }
     }
 
-    public void displayEditProfile(){
-        LayoutInflater inflater = getLayoutInflater();
-        final View dialogView = inflater.inflate(R.layout.profile_edit, null);
-        ImageView imageView = dialogView.findViewById(R.id.imageEdit);
-        TextView nameView = dialogView.findViewById(R.id.myname);
-
-        imageView.setBackground(new ShapeDrawable(new OvalShape()));
-        if (Build.VERSION.SDK_INT >= 21) {
-            imageView.setClipToOutline(true);
-        }
-
-        final String id = getIntent().getStringExtra("id");
-        nameView.setText(id);
-
-        final EditText statusView = dialogView.findViewById(R.id.statusEdit);
-        String status = null;
-
-        ArrayList<Member> users = getList();
-        for(int k=0; k<users.size(); k++){
-            if(users.get(k).id.equals(id))
-                status = users.get(k).status;
-        }
-        if(status.equals("null")){
-            statusView.setText("");
-        }
-        else {
-            statusView.setText(status);
-        }
+    public void isThereImage(final String id, final ImageView iv){
+        StringRequest myReq = new StringRequest(Request.Method.GET,
+                "http://52.231.65.151:8080/check-image/" +  id,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        Log.d("HiLogaa", response);
+                        if (response.equals("true")) {
+                            queue.add(downloadBitmap(id, iv));
+                        }
+                        else{
+                            Glide.with(getApplication())
+                                    .load(R.drawable.ic_launcher_foreground)
+                                    .into(iv);
+                        }
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        //  Log.d("ErrorLog", error.getMessage());
+                    }
+                });
+        queue.add(myReq);
     }
-    View editView;
 
+    View editView;
     public void myProfile(){
         displayProfile();
 
-        LinearLayout profileDetail = (LinearLayout) findViewById(R.id.myprofile);
+        final LinearLayout profileDetail = (LinearLayout) findViewById(R.id.myprofile);
         profileDetail.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                final String id = getIntent().getStringExtra("id");
+
                 LayoutInflater inflater = getLayoutInflater();
                 View dialogView = inflater.inflate(R.layout.my_profile, null);
                 ImageView iv = dialogView.findViewById(R.id.myimage);
@@ -295,11 +313,9 @@ public class Main2Activity extends AppCompatActivity {
                 if (Build.VERSION.SDK_INT >= 21) {
                     iv.setClipToOutline(true);
                 }
-                Glide.with(getApplication())
-                        .load(R.drawable.ic_launcher_foreground)
-                        .into(iv);
 
-                final String id = getIntent().getStringExtra("id");
+                isThereImage(id, iv);
+
                 tvName.setText(id);
                 String status = null;
 
@@ -353,9 +369,21 @@ public class Main2Activity extends AppCompatActivity {
                                                         break;
                                                     case 1:
                                                         //카메라로 사진 촬영
+                                                        selectPhoto();
+                                                        dialogInterface.dismiss();
                                                         break;
                                                     case 2:
                                                         //기본 이미지로 변경
+                                                        ImageView iv = editView.findViewById(R.id.imageEdit);
+                                                        iv.setBackground(new ShapeDrawable(new OvalShape()));
+                                                        if (Build.VERSION.SDK_INT >= 21) {
+                                                            iv.setClipToOutline(true);
+                                                        }
+                                                        Glide.with(getApplication())
+                                                                .load(R.drawable.ic_launcher_foreground)
+                                                                .into(iv);
+                                                        profilePic = null;
+                                                        dialogInterface.dismiss();
                                                         break;
                                                     case 3:
                                                         //취소
@@ -376,11 +404,9 @@ public class Main2Activity extends AppCompatActivity {
                                 if (Build.VERSION.SDK_INT >= 21) {
                                     imageView.setClipToOutline(true);
                                 }
-                                Glide.with(getApplication())
-                                        .load(R.drawable.ic_launcher_foreground)
-                                        .into(imageView);
-
                                 final String id = getIntent().getStringExtra("id");
+                                isThereImage(id, imageView);
+
                                 nameView.setText(id);
 
                                 final EditText statusView = editView.findViewById(R.id.statusEdit);
@@ -416,7 +442,16 @@ public class Main2Activity extends AppCompatActivity {
                                                                 tvStatus.setText(status);
                                                                 status = "null";
                                                             }
-
+                                                            if(profilePic==null){
+                                                                socket = new Socket("52.231.65.151", 8080);
+                                                                DataOutputStream dOut = new DataOutputStream(socket.getOutputStream());
+                                                                final String id = getIntent().getStringExtra("id");
+                                                                dOut.writeBytes("GET /init-profile?id=" + id+ " HTTP/1.1\r\nHost: 127.0.0.1:8080/\r\n\r\n");
+                                                                dOut.flush(); // Send off the data
+                                                            }
+                                                            else {
+                                                                uploadBitmap(profilePic);
+                                                            }
                                                             socket = new Socket("52.231.65.151", 8080);
                                                             DataOutputStream dOut = new DataOutputStream(socket.getOutputStream());
                                                             final String id = getIntent().getStringExtra("id");
@@ -463,6 +498,167 @@ public class Main2Activity extends AppCompatActivity {
         }
     }
 
+    private void uploadBitmap(final Bitmap bitmap) {
+
+        //getting the tag from the edittext
+        final String tags = "x";
+
+        //our custom volley request
+        AndroidMultiPartEntity volleyMultipartRequest = new AndroidMultiPartEntity(Request.Method.POST, EndPoints.UPROAD_PROFILE_PIC,
+                new Response.Listener<NetworkResponse>() {
+                    @Override
+                    public void onResponse(NetworkResponse response) {
+                        Log.d("return value",response.toString());
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.d("return value error", error.getMessage());
+                        Toast.makeText(getApplicationContext(), error.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                }) {
+
+            /*
+             * If you want to add more parameters with the image
+             * you can do it here
+             * here we have only one parameter with the image
+             * which is tags
+             * */
+            @Override
+            protected Map<String, String> getParams() throws AuthFailureError {
+                Map<String, String> params = new HashMap<>();
+                String id = getIntent().getStringExtra("id");
+                params.put("id", id);
+                return params;
+            }
+
+            /*
+             * Here we are passing image by renaming it with a unique name
+             * */
+            @Override
+            protected Map<String, AndroidMultiPartEntity.DataPart> getByteData() {
+                Map<String, AndroidMultiPartEntity.DataPart> params = new HashMap<>();
+                long imagename = System.currentTimeMillis();
+                params.put("image", new AndroidMultiPartEntity.DataPart(imagename + ".png", getFileDataFromDrawable(bitmap)));
+                return params;
+            }
+        };
+
+        //adding the request to volley
+        queue.add(volleyMultipartRequest);
+    }
+    public byte[] getFileDataFromDrawable(Bitmap bitmap) {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 80, byteArrayOutputStream);
+        return byteArrayOutputStream.toByteArray();
+    }
+
+    public AndroidMultiPartEntity downloadBitmap(final String id, final ImageView iv) {
+        //getting the tag from the edittext
+        //our custom volley request
+        Log.d("download 들어왔닝???", "들어와따!!");
+        AndroidMultiPartEntity volleyMultipartRequest = new AndroidMultiPartEntity(Request.Method.GET, EndPoints.DOWNROAD_PROFILE_PIC+id,
+                new Response.Listener<NetworkResponse>() {
+                    @Override
+                    public void onResponse(NetworkResponse response) {
+                        Log.d("여기는 들어왔닝??", response.data.toString());
+                        iv.setImageBitmap(BitmapFactory.decodeByteArray(response.data, 0, response.data.length));
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                    }
+                }) {
+
+            /*
+             * If you want to add more parameters with the image
+             * you can do it here
+             * here we have only one parameter with the image
+             * which is tags
+             * */
+            @Override
+            protected Map<String, String> getParams() throws AuthFailureError {
+                Map<String, String> params = new HashMap<>();
+                params.put("id", id);
+                return params;
+            }
+
+            /*
+             * Here we are passing image by renaming it with a unique name
+             * */
+            @Override
+            protected Map<String, AndroidMultiPartEntity.DataPart> getByteData() {
+                Map<String, AndroidMultiPartEntity.DataPart> params = new HashMap<>();
+                return params;
+            }
+        };
+        //adding the request to volley
+        return volleyMultipartRequest;
+    }
+
+    private void selectPhoto(){
+        String state = Environment.getExternalStorageState();
+        if (Environment.MEDIA_MOUNTED.equals(state)) {
+            Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            if (intent.resolveActivity(getPackageManager()) != null) {
+                File photoFile = null;
+                try {
+                    photoFile = createImageFile();
+                } catch (IOException ex) {
+
+                }
+                if (photoFile != null) {
+                    photoUri = FileProvider.getUriForFile(this, getPackageName(), photoFile);
+                    intent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
+                    startActivityForResult(intent, CAMERA_CODE);
+                }
+            }
+        }
+    }
+
+    private File createImageFile() throws IOException {
+        File dir = new File(Environment.getExternalStorageDirectory() + "/DCIM/Camera/");
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        mImageCaptureName = timeStamp + ".png";
+
+        File storageDir = new File(Environment.getExternalStorageDirectory().getAbsoluteFile() + "/DCIM/Camera/"
+
+                + mImageCaptureName);
+        currentPhotoPath = storageDir.getAbsolutePath();
+
+        return storageDir;
+
+    }
+
+    private void getPictureForPhoto() {
+        ImageView imageView = editView.findViewById(R.id.imageEdit);
+        Bitmap bitmap = BitmapFactory.decodeFile(currentPhotoPath);
+        Bitmap resized = Bitmap.createScaledBitmap(bitmap, 80, 80, true);
+        ExifInterface exif = null;
+        try {
+            exif = new ExifInterface(currentPhotoPath);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        int exifOrientation;
+        int exifDegree;
+
+        if (exif != null) {
+            exifOrientation = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL);
+            exifDegree = exifOrientationToDegrees(exifOrientation);
+        } else {
+            exifDegree = 0;
+        }
+        profilePic = rotate(resized, exifDegree);
+        imageView.setImageBitmap(profilePic);//이미지 뷰에 비트맵 넣기
+    }
+
+
     private void selectGallery(){
         Intent intent = new Intent(Intent.ACTION_PICK);
         intent.setData(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
@@ -481,7 +677,7 @@ public class Main2Activity extends AppCompatActivity {
                     //System.out.println("파일 이름은 : "+mImageCaptureName);
                     break;
                 case CAMERA_CODE:
-                    //getPictureForPhoto(); //카메라에서 가져오기
+                    getPictureForPhoto(); //카메라에서 가져오기
                     //System.out.println("파일 이름은 : "+mImageCaptureName);
                     break;
 
@@ -515,8 +711,9 @@ public class Main2Activity extends AppCompatActivity {
         int exifDegree = exifOrientationToDegrees(exifOrientation);
 
         Bitmap bitmap = BitmapFactory.decodeFile(imagePath);//경로를 통해 비트맵으로 전환
-        imageView.setImageBitmap(rotate(bitmap, exifDegree));//이미지 뷰에 비트맵 넣기
-        Log.d("이미지 패스", imagePath);
+        Bitmap resized = Bitmap.createScaledBitmap(bitmap, 80, 80, true);
+        profilePic = rotate(resized, exifDegree);
+        imageView.setImageBitmap(profilePic);//이미지 뷰에 비트맵 넣기
     }
 
     private int exifOrientationToDegrees(int exifOrientation) {

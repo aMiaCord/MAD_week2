@@ -44,18 +44,8 @@ public class ListviewAdapter extends BaseAdapter {
             iv.setClipToOutline(true);
         }
 
-        if(listviewitem.getPhotoUri() == null || listviewitem.getPhotoUri().equals("") == true){
-            Glide.with(convertView)
-                    .load(R.drawable.ic_launcher_foreground)
-                    .into(iv);
-        }
+        ((Main2Activity)Main2Activity.mContext).isThereImage(listviewitem.getID(), iv);
 
-        else{
-            Uri uri = Uri.parse(listviewitem.getPhotoUri());
-            Glide.with(convertView)
-                    .load(uri)
-                    .into(iv);
-        }
 
         TextView name=(TextView)convertView.findViewById(R.id.nameView);
         name.setText(listviewitem.getID());
