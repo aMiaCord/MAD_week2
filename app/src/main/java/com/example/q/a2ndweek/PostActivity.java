@@ -141,4 +141,24 @@ public class PostActivity extends AppCompatActivity {
         //adding the request to volley
         return volleyMultipartRequest;
     }
+
+
+    public void onDelete(View view){
+        StringRequest myReq = new StringRequest(Request.Method.GET,
+                "http://52.231.65.151:8080/post_delete?_id="+_id,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        setResult(RESULT_OK);
+                        finish();
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        //  Log.d("ErrorLog", error.getMessage());
+                    }
+                });
+        queue.add(myReq);
+    }
 }
