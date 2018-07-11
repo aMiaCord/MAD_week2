@@ -15,12 +15,15 @@ import android.os.Bundle;
 import android.util.Base64;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.GridView;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.Toast;
 
 import com.android.volley.AuthFailureError;
@@ -53,20 +56,62 @@ import java.util.Map;
 
 public class GalleryActivity {
     public ArrayList<Bitmap> images;
+    public ArrayList<String> image_names;
     GalleryActivity(){
         images = new ArrayList<>();
+        image_names = new ArrayList<>();
     }
-    public AndroidMultiPartEntity downloadBitmap(int index) {
+    public void getImageList(final RequestQueue queue, final LinearLayout listView, final Activity activity, final int width){
+        StringRequest myReq = new StringRequest(Request.Method.GET,
+                "http://52.231.65.151:8080/imagenames",
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        Log.d("HiLog", response);
+                        String[] lines = response.split("\n");
+                        int count = 0;
+                        LayoutInflater inflater = activity.getLayoutInflater();
+                        LinearLayout image_layout =(LinearLayout) inflater.inflate(R.layout.gallery_column, null);
+                        listView.addView(image_layout);
+                        for(int i=0;i<lines.length;i++){
+                            if(lines[i].equals("**image seperate**")){
+                                image_names.add(lines[i+1]);
+                                i++;
+                                queue.add(downloadBitmap(lines[i],image_layout,count,width));
+                                count++;
+                                if(count==4){
+                                    count = 0;
+                                    inflater = activity.getLayoutInflater();
+                                    image_layout =(LinearLayout) inflater.inflate(R.layout.gallery_column, null);
+                                    listView.addView(image_layout);
+                                }
+                            }
+                        }
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                          Log.d("ErrorLog", error.getMessage());
+                    }
+                });
+
+        queue.add(myReq);
+    }
+
+    public AndroidMultiPartEntity downloadBitmap(String image_name, final LinearLayout linearLayout, final int count,final int width) {
         //getting the tag from the edittext
-        final String tags = "x";
 
         //our custom volley request
-        AndroidMultiPartEntity volleyMultipartRequest = new AndroidMultiPartEntity(Request.Method.POST, EndPoints.GET_PICS_URL+"?index="+index,
+        AndroidMultiPartEntity volleyMultipartRequest = new AndroidMultiPartEntity(Request.Method.POST, EndPoints.GET_PICS_URL+image_name,
                 new Response.Listener<NetworkResponse>() {
                     @Override
                     public void onResponse(NetworkResponse response) {
                         Log.d("return value",response.toString());
+                        ImageView imageView = (ImageView)linearLayout.getChildAt(count);
                         images.add(BitmapFactory.decodeByteArray(response.data, 0, response.data.length));
+                        imageView.setImageBitmap(BitmapFactory.decodeByteArray(response.data, 0, response.data.length));
+                        imageView.setLayoutParams(new LinearLayout.LayoutParams(width/4,width/4));
                     }
                 },
                 new Response.ErrorListener() {
@@ -84,7 +129,6 @@ public class GalleryActivity {
             @Override
             protected Map<String, String> getParams() throws AuthFailureError {
                 Map<String, String> params = new HashMap<>();
-                params.put("tags", tags);
                 return params;
             }
 

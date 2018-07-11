@@ -148,11 +148,14 @@ public class Main2Activity extends AppCompatActivity {
             }
         GalleryActivity galleryActivity = new GalleryActivity();
 
-        queue.add(galleryActivity.downloadBitmap(0));
-        images.addAll(galleryActivity.images);
-        GridView gridView = findViewById(R.id.galleryView);
-        galleryAdapter = new GalleryAdapter(getApplicationContext(), images,_ids);
-        gridView.setAdapter(galleryAdapter);
+
+
+        DisplayMetrics displayMetrics = new DisplayMetrics();
+        getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
+        int width = displayMetrics.widthPixels;
+
+        LinearLayout listView = findViewById(R.id.galleryListView);
+        galleryActivity.getImageList(queue,listView,(Activity)this,width);
 
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
@@ -163,7 +166,6 @@ public class Main2Activity extends AppCompatActivity {
     public void setTablayout(){
         TabLayout tabLayout = findViewById(R.id.tabs);
         findViewById(R.id.boardLayout).setVisibility(View.GONE);
-        findViewById(R.id.galleryView).setVisibility(View.GONE);
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
@@ -184,7 +186,6 @@ public class Main2Activity extends AppCompatActivity {
                         });
                         break;
                     case 2:
-                        findViewById(R.id.galleryView).setVisibility(View.VISIBLE);
                         break;
                 }
             }
@@ -204,7 +205,6 @@ public class Main2Activity extends AppCompatActivity {
                         findViewById(R.id.boardLayout).setVisibility(View.GONE);
                         break;
                     case 2:
-                        findViewById(R.id.galleryView).setVisibility(View.GONE);
                         break;
                 }
             }
@@ -883,7 +883,6 @@ public class Main2Activity extends AppCompatActivity {
     }
 
 
-    GalleryAdapter galleryAdapter;
     ArrayList<Bitmap> images;
     ArrayList<String> _ids;
 
@@ -962,50 +961,5 @@ public class Main2Activity extends AppCompatActivity {
             time.setText(post[3]);
             return postLayout;
         }
-    }
-
-
-    public class GalleryAdapter extends BaseAdapter {
-        private Context context;
-        private ArrayList<Bitmap> image64base;
-        private ArrayList<String> _ids;
-        GalleryAdapter(Context context, ArrayList<Bitmap> image64base,ArrayList<String> _ids) {
-            this.context = context;
-            this.image64base = image64base;
-            this._ids = _ids;
-        }
-
-        public int getCount() {
-            return image64base.size();
-        }
-
-        public Object getItem(int position) {
-            return _ids.get(position);
-        }
-
-        public long getItemId(int position) {
-            return position;
-        }
-
-        public View getView(final int position, View convertView, ViewGroup parent) {
-            //set parameter of imageView
-            DisplayMetrics displayMetrics = new DisplayMetrics();
-            getWindowManager().getDefaultDisplay().getMetrics(displayMetrics);
-            int widthPixels = displayMetrics.widthPixels;
-            final ImageView imageView = new ImageView(getApplicationContext());
-            Log.d("get view start","start");
-            //imageView.setImageBitmap(image);
-            imageView.setTag((String) getItem(position));
-            imageView.setLayoutParams(new GridView.LayoutParams(GridView.AUTO_FIT, widthPixels / 4));
-            return imageView;
-        }
-
-
-    }
-
-    public Bitmap Base64ToBitmap(String code){
-        byte[] decodedString = Base64.decode(code, Base64.DEFAULT);
-        Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
-        return decodedByte;
     }
 }
