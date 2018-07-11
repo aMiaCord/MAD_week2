@@ -55,7 +55,7 @@ public class GalleryActivity {
 
     URL url;
     HttpURLConnection conn;
-    private void uploadBitmap(final Bitmap bitmap) {
+    public void uploadBitmap(final Bitmap bitmap,final ImageView imageVIew) {
 
         //getting the tag from the edittext
         final String tags = "x";
@@ -66,6 +66,7 @@ public class GalleryActivity {
                     @Override
                     public void onResponse(NetworkResponse response) {
                         Log.d("return value",response.toString());
+                        imageVIew.setImageBitmap(BitmapFactory.decodeByteArray(response.data, 0, response.data.length));
                     }
                 },
                 new Response.ErrorListener() {
@@ -93,14 +94,11 @@ public class GalleryActivity {
             @Override
             protected Map<String, AndroidMultiPartEntity.DataPart> getByteData() {
                 Map<String, AndroidMultiPartEntity.DataPart> params = new HashMap<>();
-                long imagename = System.currentTimeMillis();
-                params.put("image", new AndroidMultiPartEntity.DataPart(imagename + ".png", getFileDataFromDrawable(bitmap)));
                 return params;
             }
         };
 
         //adding the request to volley
-        queue.add(volleyMultipartRequest);
     }
 
 
