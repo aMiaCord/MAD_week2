@@ -8,23 +8,64 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
+
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
+import java.util.HashMap;
+import java.util.Map;
 
 public class LoginActivity extends AppCompatActivity {
     Intent intent;
     Socket socket;
+    public RequestQueue queue;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
     }
+
     public void onLogin(View view){
-        Thread checkID = new Thread(new Runnable() {
+        EditText idView = findViewById(R.id.idEditText);
+        final String id = idView.getText().toString();
+
+        EditText pwView = findViewById(R.id.pwEditText);
+        final String pw = pwView.getText().toString();
+        queue = Volley.newRequestQueue(this);
+
+        StringRequest myReq = new StringRequest(Request.Method.GET,
+                                                 "http://52.231.65.151:8080/login/" +  id + "?password=" + pw,
+                                                new Response.Listener<String>() {
+                                                    @Override
+                                                    public void onResponse(String response) {
+                                                        Log.d("HiLog", response);
+                                                        if (response.equals("true")) {
+                                                            intent = new Intent(getApplicationContext(), Main2Activity.class);
+                                                            intent.putExtra("id", id);
+                                                            startActivity(intent);
+                                                        }
+                                                    }
+                                                },
+                                                new Response.ErrorListener() {
+                                                    @Override
+                                                    public void onErrorResponse(VolleyError error) {
+                                                      //  Log.d("ErrorLog", error.getMessage());
+                                                    }
+                                                });
+
+        queue.add(myReq);
+
+        /** Thread checkID = new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
@@ -35,13 +76,13 @@ public class LoginActivity extends AppCompatActivity {
                     EditText pwView = findViewById(R.id.pwEditText);
                     String pw = pwView.getText().toString();
 
-                    //make socket
+                     //make socket
                     socket = new Socket("52.231.65.151", 8080);
 
                     //send request
                     DataOutputStream dOut = new DataOutputStream(socket.getOutputStream());
 
-                    dOut.writeBytes("GET /login/" + id + " HTTP/1.1\r\nHost: 127.0.0.1:8080/\r\nContent-Type: text/pain\r\n" + "Content-Length: "+pw.length() + "\r\n\r\n"+pw);
+                    dOut.writeBytes("GET /login/" + id + " HTTP/1.1\r\nHost: 127.0.0.1:8080/\r\nContent-Type: text/plain\r\n" + "Content-Length: "+pw.length() + "\r\n\r\n"+pw);
                     dOut.flush(); // Send off the data
 
                     BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -62,7 +103,8 @@ public class LoginActivity extends AppCompatActivity {
                 }catch (IOException e){e.getStackTrace(); Log.d("login failed","at check thread");}
             }
         });
-        checkID.start();
+        checkID.start(); **/
+
     }
 
     public void onRegister(View view){

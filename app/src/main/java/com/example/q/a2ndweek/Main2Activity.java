@@ -47,6 +47,8 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.RequestQueue;
+import com.android.volley.toolbox.Volley;
 import com.bumptech.glide.Glide;
 import com.facebook.CallbackManager;
 import com.facebook.FacebookCallback;
@@ -64,6 +66,7 @@ import java.util.Arrays;
 
 public class Main2Activity extends AppCompatActivity {
 
+    public RequestQueue queue;
     int REQ_CODE_UPLOAD=2;
     private ListView lv;
     private String searchKeyword;
@@ -83,7 +86,11 @@ public class Main2Activity extends AppCompatActivity {
 
         images = new ArrayList<>();
         _ids = new ArrayList<>();
-        setGalleryAdapter();
+        //new loadGallery().execute();
+
+        queue = Volley.newRequestQueue(this);
+
+        queue.add(new GalleryActivity().loadGallery((ImageView) findViewById(R.id.testImage)));
 /*        myProfile();
 
         try {
@@ -458,7 +465,7 @@ public class Main2Activity extends AppCompatActivity {
 
 
     GalleryAdapter galleryAdapter;
-    ArrayList<String> images;
+    ArrayList<Bitmap> images;
     ArrayList<String> _ids;
 
     public class loadBoard extends AsyncTask<Void, Void, Void> {
@@ -563,65 +570,63 @@ public class Main2Activity extends AppCompatActivity {
         }
     }
 
-    public ArrayList<String> loadGallery() {
-        Thread thread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    //make socket
-                    socket = new Socket("52.231.65.151", 8080);
+    public class loadGallery extends AsyncTask<Void, Void, Void> {
+        ArrayList<String[]> post_data_list;
+        @Override
+        protected void onPreExecute(){
+            super.onPreExecute();
+        }
+        @Override
+        protected Void doInBackground(Void... a) {
+            try {
+                //make socket
+                socket = new Socket("52.231.65.151", 8080);
 
-                    //send request
-                    DataOutputStream dOut = new DataOutputStream(socket.getOutputStream());
+                //send request
+                DataOutputStream dOut = new DataOutputStream(socket.getOutputStream());
 
-                    dOut.writeBytes("GET /images" + " HTTP/1.1\r\nHost: 127.0.0.1:8080/\r\n\r\n");
-                    dOut.flush(); // Send off the data
-                    BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                    String currentline;
-                    while((currentline = in.readLine())!=null){
-                        if(currentline.equals("**image seperate**"))
-                            break;
+                dOut.writeBytes("GET /images" + " HTTP/1.1\r\nHost: 127.0.0.1:8080/\r\n\r\n");
+                dOut.flush(); // Send off the data
+                BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                String currentline;
+                while((currentline = in.readLine())!=null){
+                    if(currentline.equals("**image seperate**"))
+                        break;
+                }
+                if(currentline!=null){
+                    while((currentline=in.readLine())!=null){
+                        Log.d("readline",currentline);
+                        _ids.add(currentline);
+                        images.add(Base64ToBitmap(in.readLine()));
+                        Log.d("added image",_ids.get(_ids.size()-1));
                     }
-                    if(currentline!=null){
-                        while((currentline=in.readLine())!=null){
-                            Log.d("readline",currentline);
-                            _ids.add(currentline);
-                            images.add(in.readLine());
-                            Log.d("added image",_ids.get(_ids.size()-1));
-                        }
-                    }
-                }catch (Exception e){e.printStackTrace();}
-            }
-        });
-        thread.start();
-        try{
-            thread.join();
-        }catch (Exception e){e.printStackTrace();}
-        return null;
-    }
+                }
+            }catch (Exception e){e.printStackTrace();}
+            return null;
+        }
+        @Override
+        protected void onPostExecute(Void size){
+            super.onPostExecute(size);
+            GridView gridView = findViewById(R.id.galleryView);
+            galleryAdapter = new GalleryAdapter(getApplicationContext(), images,_ids);
+            gridView.setAdapter(galleryAdapter);
 
-    public void setGalleryAdapter() {
-        GridView gridView = findViewById(R.id.galleryView);
-        loadGallery();
-        //set adapter
-        galleryAdapter = new GalleryAdapter(getApplicationContext(), images,_ids);
-        gridView.setAdapter(galleryAdapter);
-
-        gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                String _id = (String)view.getTag();
-                Intent intent = new Intent(getApplicationContext(),PostActivity.class);
-                intent.putExtra("_id",_id);
-                startActivity(intent);
-            }
-        });
+            gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+                    String _id = (String)view.getTag();
+                    Intent intent = new Intent(getApplicationContext(),PostActivity.class);
+                    intent.putExtra("_id",_id);
+                    startActivity(intent);
+                }
+            });
+        }
     }
     public class GalleryAdapter extends BaseAdapter {
         private Context context;
-        private ArrayList<String> image64base;
+        private ArrayList<Bitmap> image64base;
         private ArrayList<String> _ids;
-        GalleryAdapter(Context context, ArrayList<String> image64base,ArrayList<String> _ids) {
+        GalleryAdapter(Context context, ArrayList<Bitmap> image64base,ArrayList<String> _ids) {
             this.context = context;
             this.image64base = image64base;
             this._ids = _ids;
@@ -632,7 +637,7 @@ public class Main2Activity extends AppCompatActivity {
         }
 
         public Object getItem(int position) {
-            return image64base.get(position);
+            return _ids.get(position);
         }
 
         public long getItemId(int position) {
@@ -654,7 +659,7 @@ public class Main2Activity extends AppCompatActivity {
                     //read image from image path string
                     BitmapFactory.Options options = new BitmapFactory.Options();
                     options.inSampleSize = 8;
-                    Bitmap image = Base64ToBitmap(image64base.get(position));
+                    Bitmap image = image64base.get(position);
                     final Bitmap image2 = ThumbnailUtils.extractThumbnail(image, 128, 128);
                     final String imageTag = _ids.get(position);
                     runOnUiThread(new Runnable() {

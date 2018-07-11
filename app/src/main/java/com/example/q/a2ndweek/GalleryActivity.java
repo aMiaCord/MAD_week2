@@ -23,10 +23,21 @@ import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import com.android.volley.AuthFailureError;
+import com.android.volley.NetworkResponse;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
+
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -37,32 +48,60 @@ import java.net.MalformedURLException;
 import java.net.Socket;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
-public class GalleryActivity extends AppCompatActivity {
+public class GalleryActivity {
 
     URL url;
     HttpURLConnection conn;
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_gallery);
+    private void uploadBitmap(final Bitmap bitmap) {
 
-        Thread thread = new Thread(new Runnable() {
+        //getting the tag from the edittext
+        final String tags = "x";
+
+        //our custom volley request
+        AndroidMultiPartEntity volleyMultipartRequest = new AndroidMultiPartEntity(Request.Method.POST, EndPoints.GET_PICS_URL,
+                new Response.Listener<NetworkResponse>() {
+                    @Override
+                    public void onResponse(NetworkResponse response) {
+                        Log.d("return value",response.toString());
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                    }
+                }) {
+
+            /*
+             * If you want to add more parameters with the image
+             * you can do it here
+             * here we have only one parameter with the image
+             * which is tags
+             * */
             @Override
-            public void run() {
-                try {
-                    Socket socket = new Socket("52.231.65.151",8080);
-                    DataOutputStream dOut = new DataOutputStream(socket.getOutputStream());
-                    String custom_data;
-                    dOut.writeBytes("GET /"+"CUSTOM_DATA"+" HTTP/1.1\r\nHost: 127.0.0.1:8080/\r\n\r\n");
-                    dOut.flush(); // Send off the data
-                }catch (IOException e){e.getStackTrace();Log.d("error","occured");}
+            protected Map<String, String> getParams() throws AuthFailureError {
+                Map<String, String> params = new HashMap<>();
+                params.put("tags", tags);
+                return params;
             }
-        });
-        thread.start();
+
+            /*
+             * Here we are passing image by renaming it with a unique name
+             * */
+            @Override
+            protected Map<String, AndroidMultiPartEntity.DataPart> getByteData() {
+                Map<String, AndroidMultiPartEntity.DataPart> params = new HashMap<>();
+                long imagename = System.currentTimeMillis();
+                params.put("image", new AndroidMultiPartEntity.DataPart(imagename + ".png", getFileDataFromDrawable(bitmap)));
+                return params;
+            }
+        };
+
+        //adding the request to volley
+        queue.add(volleyMultipartRequest);
     }
-
-
 
 
     Socket socket;

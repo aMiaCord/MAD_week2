@@ -7,6 +7,8 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.provider.MediaStore;
+import android.support.constraint.ConstraintLayout;
+import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Base64;
@@ -20,23 +22,51 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.AuthFailureError;
+import com.android.volley.NetworkError;
+import com.android.volley.NetworkResponse;
+import com.android.volley.NoConnectionError;
+import com.android.volley.ParseError;
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.ServerError;
+import com.android.volley.TimeoutError;
+import com.android.volley.VolleyError;
+import com.android.volley.VolleyLog;
+import com.android.volley.toolbox.HttpHeaderParser;
+import com.android.volley.toolbox.ImageRequest;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 public class AddPostActivity extends AppCompatActivity {
 
+    public RequestQueue queue;
     int REQ_CODE_SELECT_IMAGE = 3;
     ArrayList<AddViewItem> addViewItems = new ArrayList<>();
+    private ConstraintLayout mCLayout;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_post);
+        mCLayout = findViewById(R.id.cLayout);
     }
 
 
@@ -84,54 +114,63 @@ public class AddPostActivity extends AppCompatActivity {
         startActivityForResult(intent, REQ_CODE_SELECT_IMAGE);
     }
     public void onSaveClick(View view){
-        Thread save = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                //get text
-                EditText titleView = findViewById(R.id.editTitle);
-                EditText contentView = findViewById(R.id.editContent);
-                String title = titleView.getText().toString();
-                String content = contentView.getText().toString();
-                //get image
-                ArrayList<String> images = new ArrayList<>();
-                for(AddViewItem addViewItem : addViewItems){
-                    images.add(BitMapToString(addViewItem.getImage()));
+
+        //get text
+        EditText titleView = findViewById(R.id.editTitle);
+        EditText contentView = findViewById(R.id.editContent);
+        String title = titleView.getText().toString();
+        String content = contentView.getText().toString();
+        try {
+            JSONObject jsonBody = new JSONObject();
+            jsonBody.put("content", content);
+            final String requestBody = jsonBody.toString();
+
+            queue = Volley.newRequestQueue(this);
+
+            StringRequest myReq = new StringRequest(Request.Method.POST,
+                    "http://52.231.65.151:8080/add-post?title=" + title,
+                    new Response.Listener<String>() {
+                        @Override
+                        public void onResponse(String response) {
+                            Log.d("HiLog", response);
+                        }
+                    },
+                    new Response.ErrorListener() {
+                        @Override
+                        public void onErrorResponse(VolleyError error) {
+                            Log.d("ErrorLog", error.getMessage());
+                        }
+                    }) {
+                @Override
+                public String getBodyContentType() {
+                    return "application/json; charset=utf-8";
                 }
 
-                try {
-                    Socket socket = new Socket("52.231.65.151", 8080);
-                    //send request
-                    DataOutputStream dOut = new DataOutputStream(socket.getOutputStream());
-                    //save title and text
-                    String request_message = "GET /add-post?title=" + title +" HTTP/1.1\r\nHost: 127.0.0.1:8080/\r\nContent-Type: text/plain\r\nContent-Length: "+content.length();
-                    dOut.writeBytes(request_message + "\r\n\r\n" + content + "\r\n");
-                    dOut.flush(); // Send off the data
-                    //get post id
-                    BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                    String beforeline = in.readLine();
-                    String currentline = in.readLine();
-                    while(currentline != null){
-                        beforeline = currentline;
-                        currentline = in.readLine();
+                @Override
+                public byte[] getBody() throws AuthFailureError {
+                    try {
+                        return requestBody == null ? null : requestBody.getBytes("utf-8");
+                    } catch (UnsupportedEncodingException uee) {
+                        VolleyLog.wtf("Unsupported Encoding while trying to get the bytes of %s using %s", requestBody, "utf-8");
+                        return null;
                     }
-                    String id = beforeline;
+                }
 
-                    for(int i=0;i<images.size();i++) {
-                        socket = new Socket("52.231.65.151", 8080);
-                        dOut = new DataOutputStream(socket.getOutputStream());
-                        String[] image_name = addViewItems.get(i).getImage_name().split("\\.");
-                        request_message = "GET /add-image?id=" + id +"&name="+image_name[0]+" HTTP/1.1\r\nHost: 127.0.0.1:8080/\r\nContent-Type: image/*\r\nContent-Length: "+images.get(i).length();
-                        dOut.writeBytes(request_message + "\r\n\r\n" + images.get(i) + "\r\n");
-                        dOut.flush(); // Send off the data
+                @Override
+                protected Response<String> parseNetworkResponse(NetworkResponse response) {
+                    String responseString = "";
+                    if (response != null) {
+                        responseString = String.valueOf(response.statusCode);
+                        // can get more details such as response.headers
                     }
-                }catch (IOException e){e.printStackTrace();}
+                    return Response.success(responseString, HttpHeaderParser.parseCacheHeaders(response));
+                }
+            };
 
-            }
-        });
-        save.start();
-        try {
-            save.join();
-        }catch (InterruptedException e){e.printStackTrace();}
+            queue.add(myReq);
+        }catch (JSONException e){e.printStackTrace();}
+        for(AddViewItem item :addViewItems)
+            uploadBitmap(item.getImage());
         setResult(Activity.RESULT_OK);
         finish();
     }
@@ -196,13 +235,71 @@ public class AddPostActivity extends AppCompatActivity {
 
         return imgName;
     }
+    private void uploadBitmap(final Bitmap bitmap) {
 
+        //getting the tag from the edittext
+        final String tags = "x";
 
+        //our custom volley request
+        AndroidMultiPartEntity volleyMultipartRequest = new AndroidMultiPartEntity(Request.Method.POST, EndPoints.ROOT_URL,
+                new Response.Listener<NetworkResponse>() {
+                    @Override
+                    public void onResponse(NetworkResponse response) {
+                        Log.d("return value",response.toString());
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.d("return value error", error.getMessage());
+                        Toast.makeText(getApplicationContext(), error.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                }) {
+
+            /*
+             * If you want to add more parameters with the image
+             * you can do it here
+             * here we have only one parameter with the image
+             * which is tags
+             * */
+            @Override
+            protected Map<String, String> getParams() throws AuthFailureError {
+                Map<String, String> params = new HashMap<>();
+                params.put("tags", tags);
+                return params;
+            }
+
+            /*
+             * Here we are passing image by renaming it with a unique name
+             * */
+            @Override
+            protected Map<String, AndroidMultiPartEntity.DataPart> getByteData() {
+                Map<String, AndroidMultiPartEntity.DataPart> params = new HashMap<>();
+                long imagename = System.currentTimeMillis();
+                params.put("image", new AndroidMultiPartEntity.DataPart(imagename + ".png", getFileDataFromDrawable(bitmap)));
+                return params;
+            }
+        };
+
+        //adding the request to volley
+        queue.add(volleyMultipartRequest);
+    }
+    public byte[] getFileDataFromDrawable(Bitmap bitmap) {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 80, byteArrayOutputStream);
+        return byteArrayOutputStream.toByteArray();
+    }
     public String BitMapToString(Bitmap bitmap){
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream);
         byte[] byteArray = byteArrayOutputStream .toByteArray();
         String encoded = Base64.encodeToString(byteArray, Base64.DEFAULT);
         return encoded;
+    }
+    public byte[] Bitmap2Byte(Bitmap bitmap){
+        int size = bitmap.getRowBytes() * bitmap.getHeight();
+        ByteBuffer byteBuffer = ByteBuffer.allocate(size);
+        bitmap.copyPixelsToBuffer(byteBuffer);
+        return byteBuffer.array();
     }
 }
