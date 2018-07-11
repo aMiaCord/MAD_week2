@@ -235,8 +235,8 @@ public class Main2Activity extends AppCompatActivity {
     }
 
     public void displayProfile(){
-        final String id = getIntent().getStringExtra("id");
-        final ImageView iv = (ImageView) findViewById(R.id.myimage);
+        String id = getIntent().getStringExtra("id");
+        ImageView iv = (ImageView) findViewById(R.id.myimage);
         iv.setBackground(new ShapeDrawable(new OvalShape()));
         if (Build.VERSION.SDK_INT >= 21) {
             iv.setClipToOutline(true);
@@ -266,20 +266,13 @@ public class Main2Activity extends AppCompatActivity {
     }
 
     public void isThereImage(final String id, final ImageView iv){
-        StringRequest myReq = new StringRequest(Request.Method.GET,
+
+        AndroidMultiPartEntity volleyMultipartRequest = new AndroidMultiPartEntity(Request.Method.GET,
                 "http://52.231.65.151:8080/check-image/" +  id,
-                new Response.Listener<String>() {
+                new Response.Listener<NetworkResponse>() {
                     @Override
-                    public void onResponse(String response) {
-                        Log.d("HiLogaa", response);
-                        if (response.equals("true")) {
-                            queue.add(downloadBitmap(id, iv));
-                        }
-                        else{
-                            Glide.with(getApplication())
-                                    .load(R.drawable.ic_launcher_foreground)
-                                    .into(iv);
-                        }
+                    public void onResponse(NetworkResponse response) {
+                        iv.setImageBitmap(BitmapFactory.decodeByteArray(response.data, 0, response.data.length));
                     }
                 },
                 new Response.ErrorListener() {
@@ -288,7 +281,7 @@ public class Main2Activity extends AppCompatActivity {
                         //  Log.d("ErrorLog", error.getMessage());
                     }
                 });
-        queue.add(myReq);
+        queue.add(volleyMultipartRequest);
     }
 
     View editView;
@@ -697,7 +690,7 @@ public class Main2Activity extends AppCompatActivity {
 
     private void sendPicture(Uri imgUri) {
         ImageView imageView = editView.findViewById(R.id.imageEdit);
-
+        Log.d("imgUri야 잘 들어왂ㅆ닝ㅇㅇㅇ", imgUri.toString());
         String imagePath = getRealPathFromURI(imgUri); // path 경로
         ExifInterface exif = null;
         try {
