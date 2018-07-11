@@ -73,11 +73,14 @@ public class GalleryActivity {
                         LayoutInflater inflater = activity.getLayoutInflater();
                         LinearLayout image_layout =(LinearLayout) inflater.inflate(R.layout.gallery_column, null);
                         listView.addView(image_layout);
+                        String id = null;
                         for(int i=0;i<lines.length;i++){
+                            if(lines[i].equals("**id seperate**"))
+                                id = lines[i+1];
                             if(lines[i].equals("**image seperate**")){
                                 image_names.add(lines[i+1]);
                                 i++;
-                                queue.add(downloadBitmap(lines[i],image_layout,count,width));
+                                queue.add(downloadBitmap(id,lines[i],image_layout,(Context)activity,count,width));
                                 count++;
                                 if(count==4){
                                     count = 0;
@@ -99,7 +102,7 @@ public class GalleryActivity {
         queue.add(myReq);
     }
 
-    public AndroidMultiPartEntity downloadBitmap(String image_name, final LinearLayout linearLayout, final int count,final int width) {
+    public AndroidMultiPartEntity downloadBitmap(final String id, String image_name, final LinearLayout linearLayout, final Context context, final int count, final int width) {
         //getting the tag from the edittext
         image_name = image_name.replace("/","*");
         //our custom volley request
@@ -112,6 +115,16 @@ public class GalleryActivity {
                         images.add(BitmapFactory.decodeByteArray(response.data, 0, response.data.length));
                         imageView.setImageBitmap(BitmapFactory.decodeByteArray(response.data, 0, response.data.length));
                         imageView.setLayoutParams(new LinearLayout.LayoutParams(width/4,width/4));
+                        imageView.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View view) {
+                                if(id!=null) {
+                                    Intent intent = new Intent(context, PostActivity.class);
+                                    intent.putExtra("_id", id);
+                                    context.startActivity(intent);
+                                }
+                            }
+                        });
                     }
                 },
                 new Response.ErrorListener() {
