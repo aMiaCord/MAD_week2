@@ -152,6 +152,7 @@ public class AddPostActivity extends AppCompatActivity {
                 Map<String, String> params = new HashMap<>();
                 params.put("title", title);
                 params.put("content",content);
+                params.put("uploader",getIntent().getStringExtra("id"));
                 params.put("size",String.valueOf(addViewItems.size()));
                 return params;
             }

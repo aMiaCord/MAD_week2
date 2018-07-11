@@ -173,7 +173,9 @@ public class Main2Activity extends AppCompatActivity {
                         fab.setOnClickListener(new View.OnClickListener() {
                             @Override
                             public void onClick(View view) {
-                                startActivityForResult(new Intent(getApplicationContext(),AddPostActivity.class),REQ_CODE_UPLOAD);
+                                Intent  intent = new Intent(new Intent(getApplicationContext(),AddPostActivity.class));
+                                intent.putExtra("id",getIntent().getStringExtra("id"));
+                                startActivityForResult(intent,REQ_CODE_UPLOAD);
                             }
                         });
                         break;

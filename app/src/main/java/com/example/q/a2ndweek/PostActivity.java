@@ -67,10 +67,11 @@ public class PostActivity extends AppCompatActivity {
                                 break;
                             }
                         }
-                        post_info[0] = lines[i+1];
-                        post_info[1] = lines[i+2];
-                        post_info[2] = lines[i+3];
-                        post_info[3] = lines[i+4];
+                        ((TextView)findViewById(R.id.postTitle)).setText(lines[i+1]);
+                        ((TextView)findViewById(R.id.nameText)).setText(lines[i+2]);
+                        ((TextView)findViewById(R.id.timeText)).setText(lines[i+3]);
+                        ((TextView)findViewById(R.id.postContent)).setText(lines[i+4]);
+                        
                         for(i+=5;i<lines.length;i++){
                             if(lines[i].equals("**image seperate**")){
                                 image_name.add(lines[i+1]);

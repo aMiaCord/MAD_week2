@@ -101,7 +101,7 @@ public class GalleryActivity {
 
     public AndroidMultiPartEntity downloadBitmap(String image_name, final LinearLayout linearLayout, final int count,final int width) {
         //getting the tag from the edittext
-
+        image_name = image_name.replace("/","*");
         //our custom volley request
         AndroidMultiPartEntity volleyMultipartRequest = new AndroidMultiPartEntity(Request.Method.POST, EndPoints.GET_PICS_URL+image_name,
                 new Response.Listener<NetworkResponse>() {
