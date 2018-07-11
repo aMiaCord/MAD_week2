@@ -95,7 +95,7 @@ public class GalleryActivity {
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                          Log.d("ErrorLog", error.getMessage());
+                          //Log.d("ErrorLog", error.getMessage());
                     }
                 });
 

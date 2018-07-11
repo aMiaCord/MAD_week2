@@ -170,6 +170,7 @@ public class Main2Activity extends AppCompatActivity {
                         loadBoard();
                         findViewById(R.id.boardLayout).setVisibility(View.VISIBLE);
                         FloatingActionButton fab = findViewById(R.id.fab);
+                        fab.setVisibility(View.VISIBLE);
                         fab.setOnClickListener(new View.OnClickListener() {
                             @Override
                             public void onClick(View view) {
@@ -181,6 +182,10 @@ public class Main2Activity extends AppCompatActivity {
                         break;
                     case 2:
                         findViewById(R.id.galleryListView).setVisibility(View.VISIBLE);
+                        LinearLayout listView = findViewById(R.id.galleryListView);
+                        listView.removeAllViews();
+                        GalleryActivity galleryActivity = new GalleryActivity();
+                        galleryActivity.getImageList(queue,listView,(Activity)mContext,width);
                         break;
                 }
             }
@@ -198,6 +203,7 @@ public class Main2Activity extends AppCompatActivity {
                         break;
                     case 1:
                         findViewById(R.id.boardLayout).setVisibility(View.GONE);
+                        findViewById(R.id.fab).setVisibility(View.GONE);
                         break;
                     case 2:
                         findViewById(R.id.galleryListView).setVisibility(View.GONE);
@@ -492,8 +498,6 @@ public class Main2Activity extends AppCompatActivity {
     private void uploadBitmap(final Bitmap bitmap) {
 
         //getting the tag from the edittext
-        final String tags = "x";
-
         //our custom volley request
         AndroidMultiPartEntity volleyMultipartRequest = new AndroidMultiPartEntity(Request.Method.POST, EndPoints.UPROAD_PROFILE_PIC,
                 new Response.Listener<NetworkResponse>() {
