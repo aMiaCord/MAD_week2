@@ -72,7 +72,7 @@ public class PostActivity extends AppCompatActivity {
                         ((TextView)findViewById(R.id.nameText)).setText(lines[i+2]);
                         ((TextView)findViewById(R.id.timeText)).setText(lines[i+3]);
                         ((TextView)findViewById(R.id.postContent)).setText(lines[i+4]);
-
+                        setProfileImage(lines[i+2]);
                         for(i+=5;i<lines.length;i++){
                             if(lines[i].equals("**image seperate**")){
                                 image_name.add(lines[i+1]);
@@ -95,7 +95,33 @@ public class PostActivity extends AppCompatActivity {
     }
 
 
+public void setProfileImage(String id){
+    InputStreamVolleyRequest request = new InputStreamVolleyRequest(Request.Method.GET, "http://52.231.65.151:8080/check-image/" +  id,
+            new Response.Listener<byte[]>() {
+                @Override
+                public void onResponse(byte[] response) {
+                    // TODO handle the response
+                    try {
+                        if (response!=null) {
+                            Log.d("ResponseLog", response.toString());
+                            ((ImageView)findViewById(R.id.profileButton)).setImageBitmap(BitmapFactory.decodeByteArray(response, 0, response.length));
+                        }
+                    } catch (Exception e) {
+                        // TODO Auto-generated catch block
+                        Log.d("KEY_ERROR", "UNABLE TO DOWNLOAD FILE");
+                        e.printStackTrace();
+                    }
+                }
+            } ,new Response.ErrorListener() {
 
+        @Override
+        public void onErrorResponse(VolleyError error) {
+            // TODO handle the error
+            error.printStackTrace();
+        }
+    }, null);
+    queue.add(request);
+}
 
     public AndroidMultiPartEntity downloadBitmap(final String image_name) {
         //getting the tag from the edittext
