@@ -76,6 +76,7 @@ import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.reflect.Member;
@@ -279,16 +280,42 @@ public class Main2Activity extends AppCompatActivity {
                 new Response.Listener<NetworkResponse>() {
                     @Override
                     public void onResponse(NetworkResponse response) {
+
+                        Log.d("ResponseLog", response.data.toString());
                         iv.setImageBitmap(BitmapFactory.decodeByteArray(response.data, 0, response.data.length));
                     }
                 },
                 new Response.ErrorListener() {
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        //  Log.d("ErrorLog", error.getMessage());
+                          //Log.d("ErrorLog", error.getMessage());
                     }
                 });
-        queue.add(volleyMultipartRequest);
+        InputStreamVolleyRequest request = new InputStreamVolleyRequest(Request.Method.GET, "http://52.231.65.151:8080/check-image/" +  id,
+                new Response.Listener<byte[]>() {
+                    @Override
+                    public void onResponse(byte[] response) {
+                        // TODO handle the response
+                        try {
+                            if (response!=null) {
+                                Log.d("ResponseLog", response.toString());
+                                iv.setImageBitmap(BitmapFactory.decodeByteArray(response, 0, response.length));
+                            }
+                        } catch (Exception e) {
+                            // TODO Auto-generated catch block
+                            Log.d("KEY_ERROR", "UNABLE TO DOWNLOAD FILE");
+                            e.printStackTrace();
+                        }
+                    }
+                } ,new Response.ErrorListener() {
+
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                // TODO handle the error
+                error.printStackTrace();
+            }
+        }, null);
+        queue.add(request);
     }
 
     View editView;
