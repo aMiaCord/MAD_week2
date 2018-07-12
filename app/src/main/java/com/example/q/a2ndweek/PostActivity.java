@@ -15,6 +15,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.android.volley.AuthFailureError;
 import com.android.volley.NetworkResponse;
@@ -145,12 +146,16 @@ public class PostActivity extends AppCompatActivity {
 
     public void onDelete(View view){
         StringRequest myReq = new StringRequest(Request.Method.GET,
-                "http://52.231.65.151:8080/post_delete?_id="+_id,
+                "http://52.231.65.151:8080/post_delete?_id="+_id+"&user="+getIntent().getStringExtra("user_id"),
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
-                        setResult(RESULT_OK);
-                        finish();
+                        if(response.equals("fail"))
+                            Toast.makeText(getApplicationContext(),"권한이 없습니다.",Toast.LENGTH_SHORT).show();
+                        else {
+                            setResult(RESULT_OK);
+                            finish();
+                        }
                     }
                 },
                 new Response.ErrorListener() {

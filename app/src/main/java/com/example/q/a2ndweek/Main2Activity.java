@@ -928,6 +928,7 @@ public class Main2Activity extends AppCompatActivity {
                                     String post_id = (String) view.getTag();
                                     Intent intent = new Intent(getApplicationContext(), PostActivity.class);
                                     intent.putExtra("_id", post_id);
+                                    intent.putExtra("user_id", getIntent().getStringExtra("id"));
                                     startActivityForResult(intent,REQ_CODE_POST);
                                 }
                             });

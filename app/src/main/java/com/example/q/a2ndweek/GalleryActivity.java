@@ -74,13 +74,16 @@ public class GalleryActivity {
                         LinearLayout image_layout =(LinearLayout) inflater.inflate(R.layout.gallery_column, null);
                         listView.addView(image_layout);
                         String id = null;
+                        String _id = null;
                         for(int i=0;i<lines.length;i++){
-                            if(lines[i].equals("**id seperate**"))
-                                id = lines[i+1];
+                            if(lines[i].equals("**id seperate**")) {
+                                _id = lines[i + 1];
+                                id = lines[i+2];
+                            }
                             if(lines[i].equals("**image seperate**")){
                                 image_names.add(lines[i+1]);
                                 i++;
-                                queue.add(downloadBitmap(id,lines[i],image_layout,(Context)activity,count,width));
+                                queue.add(downloadBitmap(_id,id,lines[i],image_layout,(Context)activity,count,width));
                                 count++;
                                 if(count==4){
                                     count = 0;
@@ -102,7 +105,7 @@ public class GalleryActivity {
         queue.add(myReq);
     }
 
-    public AndroidMultiPartEntity downloadBitmap(final String id, String image_name, final LinearLayout linearLayout, final Context context, final int count, final int width) {
+    public AndroidMultiPartEntity downloadBitmap(final String _id,final String id, String image_name, final LinearLayout linearLayout, final Context context, final int count, final int width) {
         //getting the tag from the edittext
         image_name = image_name.replace("/","*");
         //our custom volley request
@@ -120,7 +123,8 @@ public class GalleryActivity {
                             public void onClick(View view) {
                                 if(id!=null) {
                                     Intent intent = new Intent(context, PostActivity.class);
-                                    intent.putExtra("_id", id);
+                                    intent.putExtra("_id", _id);
+                                    intent.putExtra("user_id", id);
                                     context.startActivity(intent);
                                 }
                             }
